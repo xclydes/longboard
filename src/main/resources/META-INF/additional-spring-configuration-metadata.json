@@ -1,0 +1,49 @@
+{
+  "properties": [
+    {
+      "name": "longboard.wave.endpoint",
+      "type": "java.lang.String",
+      "description": "The Wave.com API endpoint."
+    },
+    {
+      "name": "longboard.wave.client",
+      "type": "java.lang.String",
+      "description": "The Wave.com API client ID."
+    },
+    {
+      "name": "longboard.wave.secret",
+      "type": "java.lang.String",
+      "description": "The Wave.com API client secret."
+    },
+    {
+      "name": "longboard.wave.token",
+      "type": "java.lang.String",
+      "description": "The Wave.com client token."
+    },
+    {
+      "name": "longboard.upwork.client.key",
+      "type": "java.lang.String",
+      "description": "The client key to be used by when connecting to UpWork."
+    },
+    {
+      "name": "longboard.upwork.client.secret",
+      "type": "java.lang.String",
+      "description": "The client secret to be used by when connecting to UpWork."
+    },
+    {
+      "name": "longboard.upwork.token.value",
+      "type": "java.lang.String",
+      "description": "The user token to be used by when connecting to UpWork."
+    },
+    {
+      "name": "longboard.upwork.token.secret",
+      "type": "java.lang.String",
+      "description": "The user secret to be used by when connecting to UpWork."
+    },
+    {
+      "name": "longboard.upwork.params.earnings.fields",
+      "type": "java.lang.String",
+      "description": "A comma separate list of fields to be selected by default when querying the UpWork Earnings Report API."
+    }
+  ]
+}

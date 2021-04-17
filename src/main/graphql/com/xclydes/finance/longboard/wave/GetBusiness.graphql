@@ -1,0 +1,17 @@
+query GetBusiness($businessId:ID, $accPage:Int = 1, $accPageSize:Int = 20, $cusPage:Int = 1, $cusPageSize:Int = 20, $cusSort: [CustomerSort!]! = [NAME_ASC]){
+    business(id: $businessId) {
+        id
+        name
+        type {
+            name
+            value
+        }
+        subtype {
+            name
+            value
+        }
+        isClassicAccounting
+        isClassicInvoicing
+        isPersonal
+    }
+}

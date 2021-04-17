@@ -1,0 +1,26 @@
+query BusinessList($page:Int = 1, $pageSize:Int = 10) {
+    businesses(page: $page, pageSize: $pageSize) {
+        pageInfo {
+            currentPage
+            totalPages
+            totalCount
+        }
+        edges {
+            node {
+                id
+                name
+                type {
+                    name
+                    value
+                }
+                subtype {
+                    name
+                    value
+                }
+                isClassicAccounting
+                isClassicInvoicing
+                isPersonal
+            }
+        }
+    }
+}

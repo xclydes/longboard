@@ -1,0 +1,36 @@
+query GetBusinessAccounts($businessId:ID, $accPage:Int = 1, $accPageSize:Int = 20){
+    business(id: $businessId) {
+        id
+        name
+        accounts(page: $accPage, pageSize: $accPageSize) {
+            pageInfo {
+                currentPage
+                totalPages
+                totalCount
+            }
+            edges {
+                node {
+                    id
+                    displayId
+                    name
+                    description
+                    type {
+                        name
+                        value
+                    }
+                    subtype {
+                        name
+                        value
+                    }
+                    currency {
+                        code
+                        name
+                        symbol
+                    }
+                    balance
+                    balanceInBusinessCurrency
+                }
+            }
+        }
+    }
+}

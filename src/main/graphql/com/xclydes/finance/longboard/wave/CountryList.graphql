@@ -1,0 +1,10 @@
+query CountryList {
+    countries {
+        code
+        name
+        provinces {
+            code
+            name
+        }
+    }
+}

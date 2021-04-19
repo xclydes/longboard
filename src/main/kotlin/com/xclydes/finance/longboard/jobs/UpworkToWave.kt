@@ -1,13 +1,17 @@
 package com.xclydes.finance.longboard.jobs
 
+import com.apollographql.apollo.api.Input
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.component.UpworkToWaveConversion
 import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
+import com.xclydes.finance.longboard.wave.CreateCustomerMutation
 import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
 import com.xclydes.finance.longboard.wave.GetBusinessQuery
+import com.xclydes.finance.longboard.wave.type.CustomerCreateInput
+import com.xclydes.finance.longboard.wave.type.CustomerPatchInput
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -15,7 +19,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
 @Component
-class Invoices(
+class UpworkToWave(
     @Autowired val waveSvc: WaveSvc,
     @Autowired val upworkSvc: UpworkSvc,
     @Autowired val upworkToWaveConversion: UpworkToWaveConversion,
@@ -62,9 +66,9 @@ class Invoices(
                     if (waveCustomer != null) {
                         // Update the internal notes
                         val internalNotesJson = (if(waveCustomer.internalNotes != null
-                            && waveCustomer.internalNotes!!.isNotEmpty())
+                            && waveCustomer.internalNotes!!.isNotEmpty()) {
                             jsonReader.readTree(waveCustomer.internalNotes)
-                        else jsonReader.createObjectNode()) as ObjectNode
+                            } else jsonReader.createObjectNode()) as ObjectNode
                         // Merge the upwork customer into the existing notes
                         internalNotesJson.putPOJO("upwork", upworkCustomer)
                         // Update the customer
@@ -83,9 +87,34 @@ class Invoices(
                     }
                     waveCustomer
                 }
-                .forEach { toSave -> log.debug("Save to wave $toSave") }
-            // Determine which entries do not exist
-            log.trace("Generated customers: $upworkCustomers")
+                .forEach { toSave -> run {
+                    log.info("Saving customer to Wave  ${toSave.name} (${toSave.displayId})")
+                    // If the user has an ID
+                    if(toSave.id.trim().isNotEmpty()) {
+                        // Patch the customer
+                        waveSvc.patchCustomer(CustomerPatchInput(
+                            id = toSave.id,
+                            displayId = Input.fromNullable(toSave.displayId),
+                            firstName = Input.fromNullable(toSave.firstName),
+                            lastName = Input.fromNullable(toSave.lastName),
+                            name = Input.fromNullable(toSave.name),
+                            internalNotes = Input.fromNullable(toSave.internalNotes),
+                        ))
+                        .map { result -> log.debug("Saved customer '${toSave.name}' (${toSave.displayId} | ${toSave.id})? ${result.didSucceed}. Errors: ${result.inputErrors}") }
+                    } else {
+                        // Create a new customer
+                        log.warn("Creating customer with 'Account Number': ${toSave.displayId}, Name: ${toSave.name}")
+                        waveSvc.createCustomer(CustomerCreateInput(
+                            businessId = business.id,
+                            name = toSave.name,
+                            displayId = Input.fromNullable(toSave.displayId),
+                            firstName = Input.fromNullable(toSave.firstName),
+                            lastName = Input.fromNullable(toSave.lastName),
+                            internalNotes = Input.fromNullable(toSave.internalNotes),
+                        ))
+                        .map { result -> log.debug("Created customer '${toSave.name}' (${toSave.displayId})? ${result.didSucceed}. Errors: ${result.inputErrors}") }
+                    }
+                } }
         }
     }
 }

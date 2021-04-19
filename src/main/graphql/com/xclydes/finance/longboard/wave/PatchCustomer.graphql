@@ -1,0 +1,18 @@
+mutation PatchCustomer($input: CustomerPatchInput!) {
+    customerPatch(input: $input) {
+        didSucceed
+        inputErrors {
+            path
+            code
+            message
+        }
+        customer {
+            id
+            displayId
+            firstName
+            lastName
+            name
+            internalNotes
+        }
+    }
+}

@@ -21,10 +21,7 @@ class UpworkToWaveConversion : ConversionService {
         )
 
     override fun canConvert(sourceType: TypeDescriptor?, targetType: TypeDescriptor): Boolean =
-        sourceType is ObjectNode &&
-        (
-            GetBusinessCustomersQuery.Node::class.isInstance(targetType)
-        )
+        canConvert(sourceType!!.objectType, targetType.objectType)
 
     override fun <T : Any?> convert(source: Any?, targetType: Class<T>): T? {
         var instance: Any? = null;
@@ -43,7 +40,6 @@ class UpworkToWaveConversion : ConversionService {
         return instance as T?
     }
 
-    override fun convert(source: Any?, sourceType: TypeDescriptor?, targetType: TypeDescriptor): Any? {
-        TODO("Not yet implemented")
-    }
+    override fun convert(source: Any?, sourceType: TypeDescriptor?, targetType: TypeDescriptor): Any? =
+        convert(source, targetType.objectType)
 }

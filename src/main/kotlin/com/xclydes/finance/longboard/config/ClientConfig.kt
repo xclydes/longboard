@@ -15,9 +15,9 @@ class ClientConfig {
 
     @Bean
     fun wave(@Value("\${longboard.wave.endpoint}") endpointUrl: String,
-             @Value("\${longboard.wave.endpoint}") clientId: String,
-             @Value("\${longboard.wave.endpoint}") clientSecret: String,
-             @Value("\${longboard.wave.endpoint}") token: String): ApolloClient
+             @Value("\${longboard.wave.client}") clientId: String,
+             @Value("\${longboard.wave.secret}") clientSecret: String,
+             @Value("\${longboard.wave.token}") token: String): ApolloClient
     {
         val apolloBuilder = ApolloClient.builder().serverUrl(endpointUrl)
         val okHttpBuilder = OkHttpClient.Builder()
@@ -36,8 +36,8 @@ class ClientConfig {
     @Bean
     fun upwork(@Value("\${longboard.upwork.client.key}") clientKey: String,
                @Value("\${longboard.upwork.client.secret}") clientSecret: String,
-               @Value("\${longboard.upwork.client.secret}") tokenValue: String,
-               @Value("\${longboard.upwork.client.secret}") tokenSecret: String): OAuthClient {
+               @Value("\${longboard.upwork.token.value}") tokenValue: String,
+               @Value("\${longboard.upwork.token.secret}") tokenSecret: String): OAuthClient {
         val keys = Properties()
         keys.setProperty("consumerKey", clientKey)
         keys.setProperty("consumerSecret", clientSecret)

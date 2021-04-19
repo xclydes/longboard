@@ -44,6 +44,11 @@
       "name": "longboard.upwork.params.earnings.fields",
       "type": "java.lang.String",
       "description": "A comma separate list of fields to be selected by default when querying the UpWork Earnings Report API."
+    },
+    {
+      "name": "longboard.wave.business-id",
+      "type": "java.lang.String",
+      "description": "The ID of the business, from Wave.com, to which upwork data should be synced."
     }
   ]
 }

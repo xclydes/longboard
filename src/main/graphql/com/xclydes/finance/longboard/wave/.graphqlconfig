@@ -1,0 +1,16 @@
+{
+  "name": "Wave.com",
+  "schemaPath": "wave.graphql",
+  "extensions": {
+    "endpoints": {
+      "Wave": {
+        "url": "https://gql.waveapps.com/graphql/public",
+        "headers": {
+          "user-agent": "LongBoard",
+          "authorization": "Bearer 3DhlmZHpj9GN0VabT1rYio3iFuYbZs"
+        },
+        "introspect": false
+      }
+    }
+  }
+}

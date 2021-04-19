@@ -229,6 +229,6 @@ fun earningReport(client: OAuthClient) {
         println("Querying earnings for %s with: %s".format(entityId, params))
 //        val queryResult = router.getByFreelancerLimited( entityId, params )
         val queryResult = router.getByFreelancer( entityId, params )
-        println("Billings: %s".format(queryResult.toString(5)))
+        println("Earnings: %s".format(queryResult.toString(5)))
     }
 }

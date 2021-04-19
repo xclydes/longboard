@@ -1,8 +1,8 @@
-query GetBusinessAccounts($businessId:ID, $accPage:Int = 1, $accPageSize:Int = 20){
+query GetBusinessAccounts($businessId: ID!, $accPage:Int = 1, $accPageSize:Int = 20, $types: [AccountTypeValue!] = [], $subTypes: [AccountSubtypeValue!] = []){
     business(id: $businessId) {
         id
         name
-        accounts(page: $accPage, pageSize: $accPageSize) {
+        accounts(page: $accPage, pageSize: $accPageSize, types: $types, subtypes: $subTypes) {
             pageInfo {
                 currentPage
                 totalPages

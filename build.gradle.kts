@@ -25,13 +25,13 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-configuration-processor")
+//    implementation("org.springframework.boot:spring-boot-configuration-processor")
     implementation("org.springframework.boot:spring-boot-starter-cache")
-    implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+//    implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.11.1")
     implementation("com.Upwork:api:1.0.1")
 
     compileOnly("org.projectlombok:lombok")
@@ -41,7 +41,7 @@ dependencies {
     // Coroutines extensions for easier asynchronicity handling
     implementation("com.apollographql.apollo:apollo-coroutines-support:${apolloGraphQlVersion}")
 
-    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+//    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok")

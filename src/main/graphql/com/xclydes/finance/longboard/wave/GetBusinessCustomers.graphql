@@ -1,4 +1,4 @@
-query GetBusinessCustomers($businessId:ID, $accPage:Int = 1, $accPageSize:Int = 20, $cusPage:Int = 1, $cusPageSize:Int = 20, $cusSort: [CustomerSort!]! = [NAME_ASC]){
+query GetBusinessCustomers($businessId: ID!, $cusPage:Int = 1, $cusPageSize:Int = 20, $cusSort: [CustomerSort!]! = [NAME_ASC]){
     business(id: $businessId) {
         id
         name

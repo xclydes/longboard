@@ -1,0 +1,30 @@
+query GetBusinessProduct($businessId: ID!, $prodId: ID!){
+    business(id: $businessId) {
+        id
+        name
+        product(id: $prodId) {
+            id
+            name
+            description
+            unitPrice
+            isSold
+            isBought
+            isArchived
+            business {
+                id
+            }
+            incomeAccount {
+                id
+            }
+            expenseAccount {
+                id
+            }
+            defaultSalesTaxes {
+                id
+                name
+                abbreviation
+                description
+            }
+        }
+    }
+}

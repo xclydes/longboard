@@ -1,0 +1,13 @@
+mutation CreateTransaction($input: MoneyTransactionCreateInput!){
+    moneyTransactionCreate(input:$input){
+        didSucceed
+        inputErrors{
+            path
+            message
+            code
+        }
+        transaction{
+            id
+        }
+    }
+}

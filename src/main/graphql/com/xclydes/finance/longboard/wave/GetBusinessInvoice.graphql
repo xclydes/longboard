@@ -1,16 +1,88 @@
-query GetBusinessInvoice($businessId: ID!, $filterFrom: Date, $filterTo: Date ){
+query GetBusinessInvoice($businessId: ID!, $invoiceID: ID! ){
     business(id: $businessId) {
         id
         name
-        invoices(invoiceDateStart: $filterFrom, invoiceDateEnd: $filterTo) {
-            pageInfo {
-                currentPage
-                totalPages
-                totalCount
+        invoice(id: $invoiceID) {
+            amountDue {
+                currency {
+                    code
+                    name
+                    symbol
+                }
+                raw
+                value
             }
-            edges {
-                node {
-                    amountDue {
+            amountPaid {
+                currency {
+                    code
+                    name
+                    symbol
+                }
+                raw
+                value
+            }
+            amountTitle
+            currency {
+                code
+                name
+                symbol
+            }
+            customer {
+                id
+                displayId
+                internalNotes
+                name
+            }
+            dueDate
+            id
+            invoiceDate
+            invoiceNumber
+            items {
+                account {
+                    currency {
+                        code
+                        name
+                        symbol
+                    }
+                    displayId
+                    id
+                    name
+                    description
+                    type {
+                        name
+                        value
+                    }
+                    subtype {
+                        name
+                        value
+                        type {
+                            name
+                            value
+                        }
+                    }
+                }
+                description
+                product {
+                    description
+                    expenseAccount {
+                        displayId
+                        id
+                        description
+                        name
+                    }
+                }
+                quantity
+                subtotal {
+                    currency {
+                        code
+                        name
+                        symbol
+                    }
+                    raw
+                    value
+                }
+                taxes {
+                    amount {
                         currency {
                             code
                             name
@@ -19,101 +91,29 @@ query GetBusinessInvoice($businessId: ID!, $filterFrom: Date, $filterTo: Date ){
                         raw
                         value
                     }
-                    amountTitle
+                    rate
+                    salesTax {
+                        abbreviation
+                        description
+                        id
+                        isCompound
+                        name
+                        rates {
+                            effective
+                            rate
+                        }
+                    }
+                }
+                total {
                     currency {
                         code
                         name
                         symbol
                     }
-                    customer {
-                        id
-                        displayId
-                        internalNotes
-                        name
-                    }
-                    dueDate
-                    id
-                    invoiceDate
-                    invoiceNumber
-                    items {
-                        account {
-                            currency {
-                                code
-                                name
-                                symbol
-                            }
-                            displayId
-                            id
-                            name
-                            description
-                            type {
-                                name
-                                value
-                            }
-                            subtype {
-                                name
-                                value
-                                type {
-                                    name
-                                    value
-                                }
-                            }
-                        }
-                        description
-                        product {
-                            description
-                            expenseAccount {
-                                displayId
-                                id
-                                description
-                                name
-                            }
-                        }
-                        quantity
-                        subtotal {
-                            currency {
-                                code
-                                name
-                                symbol
-                            }
-                            raw
-                            value
-                        }
-                        taxes {
-                            amount {
-                                currency {
-                                    code
-                                    name
-                                    symbol
-                                }
-                                raw
-                                value
-                            }
-                            rate
-                            salesTax {
-                                abbreviation
-                                description
-                                id
-                                isCompound
-                                name
-                                rates {
-                                    effective
-                                    rate
-                                }
-                            }
-                        }
-                        total {
-                            currency {
-                                code
-                                name
-                                symbol
-                            }
-                            raw
-                            value
-                        }
-                        unitPrice
-                    }
+                    raw
+                    value
                 }
+                unitPrice
             }
         }
     }

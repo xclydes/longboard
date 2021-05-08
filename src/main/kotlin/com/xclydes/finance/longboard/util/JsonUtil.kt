@@ -1,6 +1,7 @@
 package com.xclydes.finance.longboard.util
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import org.json.JSONArray
@@ -13,7 +14,7 @@ class JsonUtil {
     companion object {
 
         private val objectMapper by lazyOf(ObjectMapper())
-        private val objectReader by lazy { objectMapper.reader() }
+        val objectReader: ObjectReader by lazy { objectMapper.reader() }
 
         fun jsonArrayToList(arr: JSONArray): List<JSONObject> = IntStream
             .range(0, arr.length())

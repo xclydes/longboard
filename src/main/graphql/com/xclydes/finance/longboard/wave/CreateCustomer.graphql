@@ -8,27 +8,11 @@ mutation CreateCustomer($input: CustomerCreateInput!) {
         }
         customer {
             id
-            name
+            displayId
             firstName
             lastName
-            email
-            address {
-                addressLine1
-                addressLine2
-                city
-                province {
-                    code
-                    name
-                }
-                country {
-                    code
-                    name
-                }
-                postalCode
-            }
-            currency {
-                code
-            }
+            name
+            internalNotes
         }
     }
 }

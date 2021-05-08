@@ -1,0 +1,40 @@
+query GetBusinessProducts($businessId: ID!, $prodPage: Int = 1, $prodPageSize: Int = 20 ){
+    business(id: $businessId) {
+        id
+        name
+        products(page: $prodPage, pageSize: $prodPageSize) {
+            pageInfo {
+                currentPage
+                totalPages
+                totalCount
+            }
+            edges {
+                node {
+                    id
+                    name
+                    description
+                    unitPrice
+                    isSold
+                    isBought
+                    isArchived
+                    business {
+                        id
+                    }
+                    incomeAccount {
+                        id
+                    }
+                    expenseAccount {
+                        id
+                    }
+                    defaultSalesTaxes {
+                        id
+                        name
+                        abbreviation
+                        description
+                    }
+                }
+            }
+        }
+    }
+}
+

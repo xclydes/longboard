@@ -3,11 +3,8 @@ package com.xclydes.finance.longboard.component
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
 import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
-import com.xclydes.finance.longboard.wave.GetBusinessInvoiceQuery
-import com.xclydes.finance.longboard.wave.type.CurrencyCode
 import org.springframework.core.convert.ConversionService
 import org.springframework.core.convert.TypeDescriptor
 import org.springframework.stereotype.Component

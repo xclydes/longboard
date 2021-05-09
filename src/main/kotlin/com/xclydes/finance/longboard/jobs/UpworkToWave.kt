@@ -1,13 +1,7 @@
 package com.xclydes.finance.longboard.jobs
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.xclydes.finance.longboard.component.UpworkToWaveConversion
-import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
-import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
-import com.xclydes.finance.longboard.wave.GetBusinessQuery
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component

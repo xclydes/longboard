@@ -13,7 +13,6 @@ import com.xclydes.finance.longboard.wave.type.CustomerCreateInput
 import com.xclydes.finance.longboard.wave.type.CustomerPatchInput
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import java.util.concurrent.Callable
 
 @Component
 class SyncClients(

@@ -6,7 +6,6 @@ import com.apollographql.apollo.api.toInput
 import com.apollographql.apollo.coroutines.await
 import com.xclydes.finance.longboard.config.*
 import com.xclydes.finance.longboard.wave.*
-import com.xclydes.finance.longboard.wave.GetBusinessAccountsQuery.Accounts
 import com.xclydes.finance.longboard.wave.GetBusinessQuery.Business
 import com.xclydes.finance.longboard.wave.GetUserQuery.User
 import com.xclydes.finance.longboard.wave.type.*
@@ -20,7 +19,6 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.*
-import javax.swing.text.html.Option
 
 @Service
 class WaveSvc(@Autowired val client: ApolloClient) {

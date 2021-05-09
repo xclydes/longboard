@@ -5,15 +5,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
 import com.xclydes.finance.longboard.util.JsonUtil
-import com.xclydes.finance.longboard.wave.*
-import com.xclydes.finance.longboard.wave.type.*
+import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
+import com.xclydes.finance.longboard.wave.GetBusinessInvoicesQuery
+import com.xclydes.finance.longboard.wave.GetBusinessQuery
+import com.xclydes.finance.longboard.wave.type.CurrencyCode
+import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput
+import com.xclydes.finance.longboard.wave.type.InvoiceCreateItemInput
+import com.xclydes.finance.longboard.wave.type.InvoiceCreateStatus
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 @Component
 class SyncTransactions(

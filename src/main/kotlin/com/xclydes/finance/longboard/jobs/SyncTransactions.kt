@@ -145,7 +145,7 @@ class SyncTransactions(
                     invoiceNumber = transaction.reference.toInput(),
                     dueDate = WaveSvc.inputDateFormat.format(transaction.dateDue).toInput(),
                     items = items.toInput(),
-                    memo = metadata.toPrettyString().toInput()
+                    memo = transaction.description.toInput()
                 )
                 // Submit the create command
                 invoice = waveSvc.createInvoice(invoiceInput)?.let { create -> run {

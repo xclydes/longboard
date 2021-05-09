@@ -1,7 +1,6 @@
 package com.xclydes.finance.longboard.jobs
 
 import com.apollographql.apollo.api.toInput
-import com.benasher44.uuid.Uuid
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
@@ -45,12 +44,13 @@ class SyncTransactions(
         val customers = waveSvc.businessCustomers(business.fragments.businessFragment.id).orElse(emptyList())
         val customersById = customers.associateBy { customer -> customer.fragments.customerFragment.displayId }
         // Fetch and process the list of transactions, for the period, from Upwork
-        val transactionsForPeriod = upworkSvc.earnings(rptStartDate, rptEndDate)
+//        val transactionsForPeriod = upworkSvc.earnings(rptStartDate, rptEndDate)
+        val transactionsForPeriod = upworkSvc.accountsForEntity(rptStartDate, rptEndDate)
         log.debug("Transactions for $rptStartDate -> $rptEndDate\r\n===\r\n${transactionsForPeriod.toPrettyString()}")
         val resolvedTransactions = transactionsForPeriod
             .map { transaction ->
                 // The transaction should be an object node
-                val tranactionObj = TransactionWrapper(
+                val transactionObj = TransactionWrapper(
                     source = transaction as ObjectNode,
                     reference = transaction.required("reference").textValue(),
                     amount = transaction.required("amount").textValue().toDouble(),
@@ -67,12 +67,10 @@ class SyncTransactions(
                 // If there is a valid team reference
                 if (!customerId.isNullOrEmpty()) {
                     // Locate the customer
-                    tranactionObj.customer = customersById[customerId]
-                    // Lookup the invoices
-//                    tranactionObj.customerInvoices = existingCustomerInvoices.getOrDefault(customerId, tranactionObj.customerInvoices)
+                    transactionObj.customer = customersById[customerId]
                 }
                 // Save the transaction details
-                processTransaction(business, tranactionObj)
+                processTransaction(business, transactionObj)
             }
             .fold(ArrayList<Any?>()) { carry, list -> carry.also { it.addAll(list) } }
             .filterNotNull()
@@ -181,7 +179,7 @@ class SyncTransactions(
                 transaction.amount,
                 transaction.datePosted,
                 "cash",
-                JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) }.toPrettyString()
+                JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) }.toPrettyString(),
             )?.let {
                 val paymentId = it.required("id").textValue()
                 log.info("Created payment ${paymentId} for invoice ${invoice.fragments.invoiceFragment.invoiceNumber}")

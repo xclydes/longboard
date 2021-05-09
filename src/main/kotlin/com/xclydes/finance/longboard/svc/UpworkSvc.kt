@@ -26,6 +26,7 @@ import java.util.regex.Pattern
 @Service
 class UpworkSvc(@Autowired val client: OAuthClient,
                 @Value("\${longboard.upwork.params.earnings.fields}") val earningsParams: String,
+                @Value("\${longboard.upwork.params.account.fields}") val accountingParams: String,
                 @Value("\${longboard.upwork.params.account-ref}") val accountRef: String) {
 
     companion object {
@@ -98,8 +99,8 @@ class UpworkSvc(@Autowired val client: OAuthClient,
 
     @Cacheable(cacheNames = [UPWORK_ACCOUNTING])
     fun accountsForEntity(from: Date, to:Date,
-                 acctRef: String,
-                 fields: String = earningsParams,
+                 acctRef: String = accountRef,
+                 fields: String = accountingParams,
                  ): ArrayNode {
         // If a valid reference is not found
         if (acctRef.isEmpty()) throw IllegalStateException("A valid account reference is required")

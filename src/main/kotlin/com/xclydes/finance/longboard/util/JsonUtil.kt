@@ -16,6 +16,9 @@ class JsonUtil {
         private val objectMapper by lazyOf(ObjectMapper())
         val objectReader: ObjectReader by lazy { objectMapper.reader() }
 
+        fun newObject() : ObjectNode = objectReader.createObjectNode() as ObjectNode
+        fun newArray() : ArrayNode = objectReader.createArrayNode() as ArrayNode
+
         fun jsonArrayToList(arr: JSONArray): List<JSONObject> = IntStream
             .range(0, arr.length())
             .mapToObj(arr::getJSONObject)

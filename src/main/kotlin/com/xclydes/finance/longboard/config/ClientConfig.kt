@@ -6,9 +6,12 @@ import com.apollographql.apollo.ApolloClient
 import com.xclydes.finance.longboard.component.HttpLoggingInterceptor
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.client.RestTemplate
 import java.util.*
 
 
@@ -16,11 +19,22 @@ import java.util.*
 class ClientConfig {
 
     @Bean
-    fun wave(@Value("\${longboard.wave.endpoint.graghql}") endpointUrl: String,
-             @Value("\${longboard.wave.client.key}") clientId: String,
-             @Value("\${longboard.wave.client.secret}") clientSecret: String,
-             @Value("\${longboard.wave.client.debug}") debug: Boolean,
-             @Value("\${longboard.wave.token}") token: String): ApolloClient
+    @Qualifier("wave-rest")
+    fun waveRest(@Value("\${longboard.wave.endpoint.rest}") endpointUrl: String,
+                    @Value("\${longboard.wave.client.debug}") debug: Boolean,
+                    @Value("\${longboard.wave.token}") token: String): RestTemplate =
+        RestTemplateBuilder()
+            .defaultHeader("Authorization", "Bearer ${token}")
+            .rootUri(endpointUrl)
+            .build()
+
+    @Bean
+    @Qualifier("wave-graphql")
+    fun waveGraphQL(@Value("\${longboard.wave.endpoint.graghql}") endpointUrl: String,
+                    @Value("\${longboard.wave.client.key}") clientId: String,
+                    @Value("\${longboard.wave.client.secret}") clientSecret: String,
+                    @Value("\${longboard.wave.client.debug}") debug: Boolean,
+                    @Value("\${longboard.wave.token}") token: String): ApolloClient
     {
         // Add the credentials
         val authInterceptor = Interceptor { chain: Interceptor.Chain ->

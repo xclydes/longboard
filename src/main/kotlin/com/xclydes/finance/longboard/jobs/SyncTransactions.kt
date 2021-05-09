@@ -41,9 +41,6 @@ class SyncTransactions(
         rptStartDate: Date,
         rptEndDate: Date
     ): List<Any> {
-        // Get the invoices for the period specified
-//        val existingInvoices = waveSvc.invoices(business.id, rptStartDate, rptEndDate).orElse(emptyList())
-//        val existingCustomerInvoices = existingInvoices.groupBy { invoice -> invoice.customer.displayId }
         // Get the wave customers for the business. This should be coming from the cache
         val customers = waveSvc.businessCustomers(business.fragments.businessFragment.id).orElse(emptyList())
         val customersById = customers.associateBy { customer -> customer.fragments.customerFragment.displayId }
@@ -93,8 +90,6 @@ class SyncTransactions(
             // Process as income
             generateInvoice(transaction, business)?.run {
                 generatedEntries.add( this )
-                // Generate the payment
-                generatePayment(transaction, business, this)?.run { generatedEntries.add(this) }
             }
         }
         // Process as a bill
@@ -138,7 +133,7 @@ class SyncTransactions(
                     )
                 )
                 // Generate the metadata
-                val metadata = (JsonUtil.objectReader.createObjectNode() as ObjectNode).also { it.putPOJO("upwork", transaction.source) };
+                val metadata = JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) };
                 // Create an invoice
                 val invoiceInput = InvoiceCreateInput(
                     business.fragments.businessFragment.id,
@@ -155,7 +150,9 @@ class SyncTransactions(
                 // Submit the create command
                 invoice = waveSvc.createInvoice(invoiceInput)?.let { create -> run {
                         log.info("Created invoice ${invoiceInput.title} (${invoiceInput.invoiceNumber})? ${create.didSucceed}. Errors: ${create.inputErrors}")
-                        GetBusinessInvoiceQuery.Invoice(fragments = GetBusinessInvoiceQuery.Invoice.Fragments(invoiceFragment = create.invoice!!.fragments.invoiceFragment))
+                        val newInvoice = GetBusinessInvoiceQuery.Invoice(fragments = GetBusinessInvoiceQuery.Invoice.Fragments(invoiceFragment = create.invoice!!.fragments.invoiceFragment))
+                        generatePayment(transaction, business, newInvoice)
+                        newInvoice
                     }
                 }
             } else {
@@ -169,54 +166,27 @@ class SyncTransactions(
 
     private fun generatePayment(transaction: TransactionWrapper,
                                business: GetBusinessQuery.Business,
-                               invoice: GetBusinessInvoiceQuery.Invoice) : CreateTransactionMutation.Transaction? {
-        var payment: CreateTransactionMutation.Transaction? = null
+                               invoice: GetBusinessInvoiceQuery.Invoice) : String? {
+        var payment: String? = null
         // Resolve the account to be updated
         val account = accountMappings[transaction.typeKey]
             ?.let{ acctId -> waveSvc.businessAccounts(business.fragments.businessFragment.id)
             ?.find { acct -> acct.fragments.accountFragment.id == acctId } }
         // If the account was found
         if(account != null) {
-            // Create the anchor
-            val anchor = MoneyTransactionCreateAnchorInput(
-                account.fragments.accountFragment.id,
+            // Submit the payment
+            payment = waveSvc.payInvoice(
+                invoice,
+                account,
                 transaction.amount,
-                TransactionDirection.DEPOSIT
-            )
-            val items = ArrayList<MoneyTransactionCreateLineItemInput>()
-                .also {
-                    it.add(MoneyTransactionCreateLineItemInput(
-                        accountId = account.fragments.accountFragment.id,
-                        customerId = invoice.fragments.invoiceFragment.customer.id.toInput(),
-                        amount = transaction.amount,
-                        balance = BalanceType.INCREASE,
-                        description = "Payment for Invoice ${transaction.reference}".toInput()
-                    ))
-                }
-            // Generate the metadata
-            val metadata = (JsonUtil.objectReader.createObjectNode() as ObjectNode).also { it.putPOJO("upwork", transaction.source) };
-            // Create the money transaction
-            val moneyTransactionInput = MoneyTransactionCreateInput(
-                business.fragments.businessFragment.id,
-                Uuid.randomUUID().toString(),
-                WaveSvc.inputDateFormat.format(transaction.datePosted),
-                transaction.description,
-                metadata.toPrettyString().toInput(),
-                anchor,
-                items
-            )
-            // Submit it for creation
-            val createMoneyTransactionCreate = waveSvc.createMoneyTransaction(moneyTransactionInput)
-            payment = createMoneyTransactionCreate
-            ?.let {
-                    if(it.didSucceed) {
-                        log.info("Created payment for invoice (${invoice.fragments.invoiceFragment.invoiceNumber})")
-                        it.transaction
-                    } else {
-                        log.info("Failed to create payment for invoice (${invoice.fragments.invoiceFragment.invoiceNumber}). Errors: ${it.inputErrors}")
-                        null
-                    }
-                }
+                transaction.datePosted,
+                "cash",
+                JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) }.toPrettyString()
+            )?.let {
+                val paymentId = it.required("id").textValue()
+                log.info("Created payment ${paymentId} for invoice ${invoice.fragments.invoiceFragment.invoiceNumber}")
+                paymentId
+            }
         } else {
             log.warn("Failed to locate account ${accountMappings[transaction.typeKey]} for invoice ${transaction.reference}. Skipping!")
         }

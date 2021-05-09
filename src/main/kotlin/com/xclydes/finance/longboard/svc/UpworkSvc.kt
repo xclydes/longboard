@@ -55,7 +55,7 @@ class UpworkSvc(@Autowired val client: OAuthClient,
                 .map { row -> row.getJSONArray("c") }
                 .map { valueArr -> jsonArrayToList(valueArr).map { vJson -> vJson.getString("v") } }
                 .forEach { valueList ->
-                    with(JsonUtil.objectReader.createObjectNode() as ObjectNode) {
+                    with(JsonUtil.newObject()) {
                         valueList.onEachIndexed { index, value -> this.put(headings[index], value) }
                         earnings.add(this)
                     }

@@ -113,7 +113,6 @@ fragment InvoiceFragment on Invoice {
         unitPrice
     }
 }
-
 fragment ProductFragment on Product {
     id
     name
@@ -138,7 +137,6 @@ fragment ProductFragment on Product {
         description
     }
 }
-
 fragment CustomerFragment on Customer {
     id
     displayId
@@ -147,10 +145,10 @@ fragment CustomerFragment on Customer {
     name
     internalNotes
 }
-
 fragment AccountFragment on Account {
     id
     displayId
+    classicId
     name
     description
     type {
@@ -169,7 +167,6 @@ fragment AccountFragment on Account {
     balance
     balanceInBusinessCurrency
 }
-
 fragment BusinessFragment on Business {
     id
     name

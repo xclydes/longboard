@@ -97,9 +97,11 @@ class SyncTransactions(
 
     private fun generateInvoice(transaction: TransactionWrapper,
                                 business: GetBusinessQuery.Business): Any? {
-        var invoice: Any? = waveSvc.invoice(business.id, transaction.reference).orElse(null)
+//        var invoice: Any? = waveSvc.invoices(business.id, invoiceRef = transaction.reference).orElse(null)
+        var invoice: Any? = transaction.customerInvoices.find { inv -> transaction.reference == inv.invoiceNumber }
         // If no such invoice exists
         if(invoice == null && transaction.amount > 0) {
+            log.debug("Creating invoice for ${transaction.reference}")
             // Determine the product id
             val product = productMappings[transaction.typeKey]?.let{ waveSvc.businessProduct(business.id, it).orElse( null ) }
             // If the account and product are set
@@ -144,8 +146,14 @@ class SyncTransactions(
                     memo = metadata.toPrettyString().toInput()
                 )
                 // Submit the create command
-                invoice = waveSvc.createInvoice(invoiceInput).orElse(null)
+                invoice = waveSvc.createInvoice(invoiceInput).map { create -> run {
+                        log.info("Created invoice${invoiceInput.title} (${invoiceInput.poNumber})? ${create.didSucceed}. Errors: ${create.inputErrors}")
+                        create.invoice
+                    }
+                }.get()
             }
+        } else {
+            log.debug("Invoice for ${transaction.reference} exists. Skipping!")
         }
         return invoice
     }

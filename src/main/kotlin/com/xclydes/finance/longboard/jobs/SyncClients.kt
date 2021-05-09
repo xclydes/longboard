@@ -40,7 +40,7 @@ class SyncClients(
                 .mapNotNull { upworkCustomer -> this.convertCustomer(upworkCustomer, waveCustomers) }
                 .mapNotNull { toSave ->
                      run {
-                        log.info("Saving customer to Wave  ${toSave.name} (${toSave.displayId})")
+                        log.info("Saving customer to Wave: ${toSave.name} (${toSave.displayId})")
                         // If the user has an ID
                         if (toSave.id.trim().isNotEmpty()) {
                             // Create a new customer
@@ -140,7 +140,7 @@ class SyncClients(
         )
             .map { result ->
                 run {
-                    log.debug("Saved customer '${toSave.name}' (${toSave.displayId} | ${toSave.id})? ${result.didSucceed}. Errors: ${result.inputErrors}")
+                    log.debug("Saved customer '${toSave.name}' (${toSave.displayId}) | ${toSave.id})? ${result.didSucceed}. Errors: ${result.inputErrors}")
                     // If successful
                     if (result.didSucceed) {
                         val customer = result.customer!!

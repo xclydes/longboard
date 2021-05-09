@@ -1,8 +1,8 @@
-query GetBusinessInvoices($businessId: ID!, $filterFrom: Date, $filterTo: Date ){
+query GetBusinessInvoices($businessId: ID!, $filterNum: String, $filterFrom: Date, $filterTo: Date, $invPage: Int = 1, $invPageSize: Int = 99){
     business(id: $businessId) {
         id
         name
-        invoices(invoiceDateStart: $filterFrom, invoiceDateEnd: $filterTo) {
+        invoices(invoiceDateStart: $filterFrom, invoiceDateEnd: $filterTo, invoiceNumber: $filterNum, page: $invPage, pageSize: $invPageSize) {
             pageInfo {
                 currentPage
                 totalPages

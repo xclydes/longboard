@@ -2,6 +2,7 @@ package com.xclydes.finance.longboard.svc
 
 import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.api.Input
+import com.apollographql.apollo.api.toInput
 import com.apollographql.apollo.coroutines.await
 import com.xclydes.finance.longboard.config.*
 import com.xclydes.finance.longboard.wave.*
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service
 import org.springframework.util.Base64Utils
 import java.text.DateFormat
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.*
 import javax.swing.text.html.Option
 
@@ -68,11 +70,20 @@ class WaveSvc(@Autowired val client: ApolloClient) {
 
     /* Start Invoices */
     @Cacheable(cacheNames = [WAVE_INVOICES])
-    fun invoices(businessID: String, from: Date, to:Date) : Optional<List<GetBusinessInvoicesQuery.Node>> = runBlocking {
+    fun invoices(businessID: String,
+                 from: Date = Date.from(Instant.EPOCH), to:Date = Date(),
+                 page: Int = 1, pageSize: Int = 99,
+                 invoiceRef: String? = null
+    ) : Optional<List<GetBusinessInvoicesQuery.Node>> = runBlocking {
         // No from is set
         val invoicesResponse = client.query(
-            GetBusinessInvoicesQuery(businessID, Input.optional(inputDateFormat.format(from)),
-                Input.optional(inputDateFormat.format(to)))
+            GetBusinessInvoicesQuery(businessID,
+                filterFrom = inputDateFormat.format(from).toInput(),
+                filterTo = inputDateFormat.format(to).toInput(),
+                invPage = page.toInput(),
+                invPageSize = pageSize.toInput(),
+                filterNum = Input.optional(invoiceRef)
+            )
         ).await()
         Optional.ofNullable(invoicesResponse.data?.business?.invoices?.edges?.map { edge -> edge.node })
     }
@@ -87,9 +98,9 @@ class WaveSvc(@Autowired val client: ApolloClient) {
     }
 
     @CacheEvict(WAVE_INVOICE, WAVE_INVOICES)
-    fun createInvoice(invoice: InvoiceCreateInput): Optional<CreateInvoiceMutation.Invoice> = runBlocking {
+    fun createInvoice(invoice: InvoiceCreateInput): Optional<CreateInvoiceMutation.InvoiceCreate> = runBlocking {
         val mutationResult = client.mutate(CreateInvoiceMutation(invoice)).await()
-        Optional.ofNullable(mutationResult.data?.invoiceCreate?.invoice)
+        Optional.ofNullable(mutationResult.data?.invoiceCreate)
     }
 
     fun createMoneyTransaction(invoice: MoneyTransactionCreateInput): Optional<CreateTransactionMutation.Transaction> = runBlocking {

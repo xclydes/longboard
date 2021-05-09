@@ -10,25 +10,7 @@ query GetBusinessAccounts($businessId: ID!, $accPage:Int = 1, $accPageSize:Int =
             }
             edges {
                 node {
-                    id
-                    displayId
-                    name
-                    description
-                    type {
-                        name
-                        value
-                    }
-                    subtype {
-                        name
-                        value
-                    }
-                    currency {
-                        code
-                        name
-                        symbol
-                    }
-                    balance
-                    balanceInBusinessCurrency
+                    ...AccountFragment
                 }
             }
         }

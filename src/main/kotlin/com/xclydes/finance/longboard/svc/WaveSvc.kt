@@ -11,6 +11,8 @@ import com.xclydes.finance.longboard.wave.GetUserQuery.User
 import com.xclydes.finance.longboard.wave.type.*
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
@@ -21,7 +23,8 @@ import java.time.Instant
 import java.util.*
 
 @Service
-class WaveSvc(@Autowired val client: ApolloClient) {
+class WaveSvc(@Autowired val client: ApolloClient,
+              @Value("\${longboard.wave.token}") token: String) {
 
     companion object {
         const val ID_BUSINESS: String = "Business";
@@ -31,6 +34,8 @@ class WaveSvc(@Autowired val client: ApolloClient) {
         val inputDateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd")
         val reportDateFormat: DateFormat = SimpleDateFormat("yyyyMMdd")
     }
+
+    private val restClient by lazy { RestTemplateBuilder().defaultHeader("Authorization", "Bearer ${token}").build() }
 
     @Cacheable(cacheNames = [WAVE_APIID])
     fun decodeId(b64Id: String) : Map<String, String> =
@@ -72,7 +77,7 @@ class WaveSvc(@Autowired val client: ApolloClient) {
                  from: Date = Date.from(Instant.EPOCH), to:Date = Date(),
                  page: Int = 1, pageSize: Int = 99,
                  invoiceRef: String? = null
-    ) : Optional<List<GetBusinessInvoicesQuery.Node>> = runBlocking {
+    ) : List<GetBusinessInvoicesQuery.Node>? = runBlocking {
         // No from is set
         val invoicesResponse = client.query(
             GetBusinessInvoicesQuery(businessID,
@@ -83,27 +88,27 @@ class WaveSvc(@Autowired val client: ApolloClient) {
                 filterNum = Input.optional(invoiceRef)
             )
         ).await()
-        Optional.ofNullable(invoicesResponse.data?.business?.invoices?.edges?.map { edge -> edge.node })
+        invoicesResponse.data?.business?.invoices?.edges?.map { edge -> edge.node }
     }
 
     @Cacheable(cacheNames = [WAVE_INVOICE])
-    fun invoice(businessID: String, invoiceID: String) : Optional<GetBusinessInvoiceQuery.Invoice> = runBlocking {
+    fun invoice(businessID: String, invoiceID: String) : GetBusinessInvoiceQuery.Invoice? = runBlocking {
         // No from is set
         val invoicesResponse = client.query(
             GetBusinessInvoiceQuery(businessID, invoiceID)
         ).await()
-        Optional.ofNullable(invoicesResponse.data?.business?.invoice)
+        invoicesResponse.data?.business?.invoice
     }
 
     @CacheEvict(WAVE_INVOICE, WAVE_INVOICES)
-    fun createInvoice(invoice: InvoiceCreateInput): Optional<CreateInvoiceMutation.InvoiceCreate> = runBlocking {
+    fun createInvoice(invoice: InvoiceCreateInput): CreateInvoiceMutation.InvoiceCreate? = runBlocking {
         val mutationResult = client.mutate(CreateInvoiceMutation(invoice)).await()
-        Optional.ofNullable(mutationResult.data?.invoiceCreate)
+        mutationResult.data?.invoiceCreate
     }
 
-    fun createMoneyTransaction(invoice: MoneyTransactionCreateInput): Optional<CreateTransactionMutation.Transaction> = runBlocking {
+    fun createMoneyTransaction(invoice: MoneyTransactionCreateInput): CreateTransactionMutation.MoneyTransactionCreate? = runBlocking {
         val mutationResult = client.mutate(CreateTransactionMutation(invoice)).await()
-        Optional.ofNullable(mutationResult.data?.moneyTransactionCreate?.transaction)
+        mutationResult.data?.moneyTransactionCreate
     }
     /* End Invoices */
 

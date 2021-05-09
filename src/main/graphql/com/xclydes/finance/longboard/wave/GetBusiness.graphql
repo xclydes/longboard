@@ -1,17 +1,5 @@
 query GetBusiness($businessId: ID!){
     business(id: $businessId) {
-        id
-        name
-        type {
-            name
-            value
-        }
-        subtype {
-            name
-            value
-        }
-        isClassicAccounting
-        isClassicInvoicing
-        isPersonal
+        ...BusinessFragment
     }
 }

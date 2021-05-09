@@ -7,19 +7,7 @@ query BusinessList($page:Int = 1, $pageSize:Int = 10) {
         }
         edges {
             node {
-                id
-                name
-                type {
-                    name
-                    value
-                }
-                subtype {
-                    name
-                    value
-                }
-                isClassicAccounting
-                isClassicInvoicing
-                isPersonal
+                ...BusinessFragment
             }
         }
     }

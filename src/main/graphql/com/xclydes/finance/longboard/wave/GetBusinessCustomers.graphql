@@ -10,12 +10,7 @@ query GetBusinessCustomers($businessId: ID!, $cusPage:Int = 1, $cusPageSize:Int 
             }
             edges {
                 node {
-                    id
-                    displayId
-                    firstName
-                    lastName
-                    name
-                    internalNotes
+                    ...CustomerFragment
                 }
             }
         }

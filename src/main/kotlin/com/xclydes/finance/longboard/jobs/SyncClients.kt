@@ -26,7 +26,7 @@ class SyncClients(
 
     fun execute(business: GetBusinessQuery.Business): List<GetBusinessCustomersQuery.Node> {
         // Get the wave customers for the business
-        val waveCustomers = waveSvc.businessCustomers(business.id).orElse(emptyList())
+        val waveCustomers = waveSvc.businessCustomers(business.fragments.businessFragment.id).orElse(emptyList())
         // Get the upwork teams
         val companies = upworkSvc.teams()
         // If the company list if not present
@@ -39,9 +39,9 @@ class SyncClients(
                 .mapNotNull { upworkCustomer -> this.convertCustomer(upworkCustomer, waveCustomers) }
                 .mapNotNull { toSave ->
                      run {
-                        log.info("Saving customer to Wave: ${toSave.name} (${toSave.displayId})")
+                        log.info("Saving customer to Wave: ${toSave.fragments.customerFragment.name} (${toSave.fragments.customerFragment.displayId})")
                         // If the user has an ID
-                        if (toSave.id.trim().isNotEmpty()) {
+                        if (toSave.fragments.customerFragment.id.trim().isNotEmpty()) {
                             // Create a new customer
                             updateCustomer(toSave)
                         } else {
@@ -57,14 +57,14 @@ class SyncClients(
 
     private fun convertCustomer(upworkCustomer: JsonNode, waveCustomers: List<GetBusinessCustomersQuery.Node>): GetBusinessCustomersQuery.Node {
         var waveCustomer = waveCustomers
-            .find { waveCustomer -> waveCustomer.displayId!!.equals(upworkCustomer["reference"].textValue()) }
+            .find { waveCustomer -> waveCustomer.fragments.customerFragment.displayId!!.equals(upworkCustomer["reference"].textValue()) }
         // If there is a customer
         if (waveCustomer != null) {
             // Update the internal notes
-            val internalNotesJson = (if (waveCustomer.internalNotes != null
-                && waveCustomer.internalNotes!!.isNotEmpty()
+            val internalNotesJson = (if (waveCustomer.fragments.customerFragment.internalNotes != null
+                && waveCustomer.fragments.customerFragment.internalNotes!!.isNotEmpty()
             ) {
-                jsonReader.readTree(waveCustomer.internalNotes)
+                jsonReader.readTree(waveCustomer.fragments.customerFragment.internalNotes)
             } else jsonReader.createObjectNode()) as ObjectNode
             // Merge the upwork customer into the existing notes
             internalNotesJson.putPOJO("upwork", upworkCustomer)
@@ -72,13 +72,9 @@ class SyncClients(
             val newNotesJsonString = internalNotesJson.toPrettyString()
             // Update the customer
             waveCustomer = waveCustomer.copy(
-                waveCustomer.__typename,
-                waveCustomer.id,
-                waveCustomer.displayId,
-                waveCustomer.firstName,
-                waveCustomer.lastName,
-                waveCustomer.name,
-                newNotesJsonString
+                fragments = GetBusinessCustomersQuery.Node.Fragments(waveCustomer.fragments.customerFragment.copy(
+                    internalNotes = newNotesJsonString
+                ))
             )
         } else if (upworkToWaveConversion.canConvert(
                 JsonNode::class.java,
@@ -97,26 +93,21 @@ class SyncClients(
         // Create the customer
         return waveSvc.createCustomer(
             CustomerCreateInput(
-                businessId = business.id,
-                name = toSave.name,
-                displayId = Input.fromNullable(toSave.displayId),
-                firstName = Input.fromNullable(toSave.firstName),
-                lastName = Input.fromNullable(toSave.lastName),
-                internalNotes = Input.fromNullable(toSave.internalNotes),
+                businessId = business.fragments.businessFragment.id,
+                name = toSave.fragments.customerFragment.name,
+                displayId = Input.fromNullable(toSave.fragments.customerFragment.displayId),
+                firstName = Input.fromNullable(toSave.fragments.customerFragment.firstName),
+                lastName = Input.fromNullable(toSave.fragments.customerFragment.lastName),
+                internalNotes = Input.fromNullable(toSave.fragments.customerFragment.internalNotes),
             )
         )
         .map { result -> run{
-            log.debug("Created customer '${toSave.name}' (${toSave.displayId})? ${result.didSucceed}. Errors: ${result.inputErrors}")
+            log.debug("Created customer '${toSave.fragments.customerFragment.name}' (${toSave.fragments.customerFragment.displayId})? ${result.didSucceed}. Errors: ${result.inputErrors}")
             // If successful
             if (result.didSucceed) {
                 val customer = result.customer!!
                 GetBusinessCustomersQuery.Node(
-                    id = customer.id,
-                    name = customer.name,
-                    internalNotes = customer.internalNotes,
-                    lastName = customer.lastName,
-                    firstName = customer.firstName,
-                    displayId = customer.displayId,
+                    fragments = GetBusinessCustomersQuery.Node.Fragments(customer.fragments.customerFragment)
                 )
             } else {
                 null
@@ -129,27 +120,22 @@ class SyncClients(
         // Patch the customer
         return waveSvc.patchCustomer(
             CustomerPatchInput(
-                id = toSave.id,
-                displayId = Input.fromNullable(toSave.displayId),
-                firstName = Input.fromNullable(toSave.firstName),
-                lastName = Input.fromNullable(toSave.lastName),
-                name = Input.fromNullable(toSave.name),
-                internalNotes = Input.fromNullable(toSave.internalNotes),
+                id = toSave.fragments.customerFragment.id,
+                displayId = Input.fromNullable(toSave.fragments.customerFragment.displayId),
+                firstName = Input.fromNullable(toSave.fragments.customerFragment.firstName),
+                lastName = Input.fromNullable(toSave.fragments.customerFragment.lastName),
+                name = Input.fromNullable(toSave.fragments.customerFragment.name),
+                internalNotes = Input.fromNullable(toSave.fragments.customerFragment.internalNotes),
             )
         )
             .map { result ->
                 run {
-                    log.debug("Saved customer '${toSave.name}' (${toSave.displayId}) | ${toSave.id})? ${result.didSucceed}. Errors: ${result.inputErrors}")
+                    log.debug("Saved customer '${toSave.fragments.customerFragment.name}' (${toSave.fragments.customerFragment.displayId}) | ${toSave.fragments.customerFragment.id})? ${result.didSucceed}. Errors: ${result.inputErrors}")
                     // If successful
                     if (result.didSucceed) {
                         val customer = result.customer!!
                         GetBusinessCustomersQuery.Node(
-                            id = customer.id,
-                            name = customer.name,
-                            internalNotes = customer.internalNotes,
-                            lastName = customer.lastName,
-                            firstName = customer.firstName,
-                            displayId = customer.displayId,
+                            fragments = GetBusinessCustomersQuery.Node.Fragments(customer.fragments.customerFragment)
                         )
                     } else {
                         null

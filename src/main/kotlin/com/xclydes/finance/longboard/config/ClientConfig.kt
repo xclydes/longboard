@@ -16,7 +16,7 @@ import java.util.*
 class ClientConfig {
 
     @Bean
-    fun wave(@Value("\${longboard.wave.endpoint}") endpointUrl: String,
+    fun wave(@Value("\${longboard.wave.endpoint.graghql}") endpointUrl: String,
              @Value("\${longboard.wave.client.key}") clientId: String,
              @Value("\${longboard.wave.client.secret}") clientSecret: String,
              @Value("\${longboard.wave.client.debug}") debug: Boolean,

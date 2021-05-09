@@ -1,29 +1,27 @@
 package com.xclydes.finance.longboard.jobs
 
 import com.apollographql.apollo.api.toInput
+import com.benasher44.uuid.Uuid
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
 import com.xclydes.finance.longboard.util.JsonUtil
-import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
-import com.xclydes.finance.longboard.wave.GetBusinessInvoicesQuery
-import com.xclydes.finance.longboard.wave.GetBusinessQuery
-import com.xclydes.finance.longboard.wave.type.CurrencyCode
-import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput
-import com.xclydes.finance.longboard.wave.type.InvoiceCreateItemInput
-import com.xclydes.finance.longboard.wave.type.InvoiceCreateStatus
+import com.xclydes.finance.longboard.wave.*
+import com.xclydes.finance.longboard.wave.type.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
 
 @Component
 class SyncTransactions(
     val waveSvc: WaveSvc,
     val upworkSvc: UpworkSvc,
-    @Value("#{\${longboard.map.upwork.wave.products}}") val productMappings: Map<String, String>
+    @Value("#{\${longboard.map.upwork.wave.products}}") val productMappings: Map<String, String>,
+    @Value("#{\${longboard.map.upwork.wave.accounts}}") val accountMappings: Map<String, String>
 ) {
 
     private val log by lazyOf(LoggerFactory.getLogger(javaClass))
@@ -36,7 +34,7 @@ class SyncTransactions(
                                            val type: String, val subType: String,
                                            val typeKey: String = "${type}-${subType}",
                                            var customer: GetBusinessCustomersQuery.Node? = null,
-                                           var customerInvoices: List<GetBusinessInvoicesQuery.Node> = emptyList())
+    )
 
     fun execute(
         business: GetBusinessQuery.Business,
@@ -44,11 +42,11 @@ class SyncTransactions(
         rptEndDate: Date
     ): List<Any> {
         // Get the invoices for the period specified
-        val existingInvoices = waveSvc.invoices(business.id, rptStartDate, rptEndDate).orElse(emptyList())
-        val existingCustomerInvoices = existingInvoices.groupBy { invoice -> invoice.customer.displayId }
+//        val existingInvoices = waveSvc.invoices(business.id, rptStartDate, rptEndDate).orElse(emptyList())
+//        val existingCustomerInvoices = existingInvoices.groupBy { invoice -> invoice.customer.displayId }
         // Get the wave customers for the business. This should be coming from the cache
-        val customers = waveSvc.businessCustomers(business.id).orElse(emptyList())
-        val customersById = customers.associateBy { customer -> customer.displayId }
+        val customers = waveSvc.businessCustomers(business.fragments.businessFragment.id).orElse(emptyList())
+        val customersById = customers.associateBy { customer -> customer.fragments.customerFragment.displayId }
         // Fetch and process the list of transactions, for the period, from Upwork
         val transactionsForPeriod = upworkSvc.earnings(rptStartDate, rptEndDate)
         log.debug("Transactions for $rptStartDate -> $rptEndDate\r\n===\r\n${transactionsForPeriod.toPrettyString()}")
@@ -74,7 +72,7 @@ class SyncTransactions(
                     // Locate the customer
                     tranactionObj.customer = customersById[customerId]
                     // Lookup the invoices
-                    tranactionObj.customerInvoices = existingCustomerInvoices.getOrDefault(customerId, tranactionObj.customerInvoices)
+//                    tranactionObj.customerInvoices = existingCustomerInvoices.getOrDefault(customerId, tranactionObj.customerInvoices)
                 }
                 // Save the transaction details
                 processTransaction(business, tranactionObj)
@@ -93,21 +91,26 @@ class SyncTransactions(
         // If there is a customer
         if(transaction.customer != null) {
             // Process as income
-            generatedEntries.add( generateInvoice(transaction, business) )
+            generateInvoice(transaction, business)?.run {
+                generatedEntries.add( this )
+                // Generate the payment
+                generatePayment(transaction, business, this)?.run { generatedEntries.add(this) }
+            }
         }
         // Process as a bill
         return generatedEntries
     }
 
     private fun generateInvoice(transaction: TransactionWrapper,
-                                business: GetBusinessQuery.Business): Any? {
-//        var invoice: Any? = waveSvc.invoices(business.id, invoiceRef = transaction.reference).orElse(null)
-        var invoice: Any? = transaction.customerInvoices.find { inv -> transaction.reference == inv.invoiceNumber }
+                                business: GetBusinessQuery.Business): GetBusinessInvoiceQuery.Invoice? {
+        var invoice: GetBusinessInvoiceQuery.Invoice? = waveSvc.invoices(business.fragments.businessFragment.id, invoiceRef = transaction.reference)
+            ?.find { invoice -> invoice.fragments.invoiceFragment.invoiceNumber == transaction.reference }
+            ?.let { inv -> waveSvc.invoice(business.fragments.businessFragment.id, inv.fragments.invoiceFragment.id) }
         // If no such invoice exists
         if(invoice == null && transaction.amount > 0) {
             log.debug("Creating invoice for ${transaction.reference}")
             // Determine the product id
-            val product = productMappings[transaction.typeKey]?.let{ waveSvc.businessProduct(business.id, it).orElse( null ) }
+            val product = productMappings[transaction.typeKey]?.let{ waveSvc.businessProduct(business.fragments.businessFragment.id, it).orElse( null ) }
             // If the account and product are set
             if( product != null ) {
                 // Parse the description
@@ -128,7 +131,7 @@ class SyncTransactions(
                 // Add the line item
                 items.add(
                     InvoiceCreateItemInput(
-                        productId = product.id,
+                        productId = product.fragments.productFragment.id,
                         description = description.toInput(),
                         quantity = quantity.toInput(),
                         unitPrice = unitPrice.toInput()
@@ -138,8 +141,8 @@ class SyncTransactions(
                 val metadata = (JsonUtil.objectReader.createObjectNode() as ObjectNode).also { it.putPOJO("upwork", transaction.source) };
                 // Create an invoice
                 val invoiceInput = InvoiceCreateInput(
-                    business.id,
-                    transaction.customer!!.id,
+                    business.fragments.businessFragment.id,
+                    transaction.customer!!.fragments.customerFragment.id,
                     status = InvoiceCreateStatus.SAVED.toInput(),
                     currency = CurrencyCode.USD.toInput(),
                     invoiceDate = WaveSvc.inputDateFormat.format(transaction.datePosted).toInput(),
@@ -150,16 +153,74 @@ class SyncTransactions(
                     memo = metadata.toPrettyString().toInput()
                 )
                 // Submit the create command
-                invoice = waveSvc.createInvoice(invoiceInput).map { create -> run {
-                        log.info("Created invoice${invoiceInput.title} (${invoiceInput.poNumber})? ${create.didSucceed}. Errors: ${create.inputErrors}")
-                        create.invoice
+                invoice = waveSvc.createInvoice(invoiceInput)?.let { create -> run {
+                        log.info("Created invoice ${invoiceInput.title} (${invoiceInput.invoiceNumber})? ${create.didSucceed}. Errors: ${create.inputErrors}")
+                        GetBusinessInvoiceQuery.Invoice(fragments = GetBusinessInvoiceQuery.Invoice.Fragments(invoiceFragment = create.invoice!!.fragments.invoiceFragment))
                     }
-                }.get()
+                }
+            } else {
+                log.warn("Failed to locate product ${productMappings[transaction.typeKey]} for invoice ${transaction.reference}. Skipping!")
             }
         } else {
             log.debug("Invoice for ${transaction.reference} exists. Skipping!")
         }
         return invoice
+    }
+
+    private fun generatePayment(transaction: TransactionWrapper,
+                               business: GetBusinessQuery.Business,
+                               invoice: GetBusinessInvoiceQuery.Invoice) : CreateTransactionMutation.Transaction? {
+        var payment: CreateTransactionMutation.Transaction? = null
+        // Resolve the account to be updated
+        val account = accountMappings[transaction.typeKey]
+            ?.let{ acctId -> waveSvc.businessAccounts(business.fragments.businessFragment.id)
+            ?.find { acct -> acct.fragments.accountFragment.id == acctId } }
+        // If the account was found
+        if(account != null) {
+            // Create the anchor
+            val anchor = MoneyTransactionCreateAnchorInput(
+                account.fragments.accountFragment.id,
+                transaction.amount,
+                TransactionDirection.DEPOSIT
+            )
+            val items = ArrayList<MoneyTransactionCreateLineItemInput>()
+                .also {
+                    it.add(MoneyTransactionCreateLineItemInput(
+                        accountId = account.fragments.accountFragment.id,
+                        customerId = invoice.fragments.invoiceFragment.customer.id.toInput(),
+                        amount = transaction.amount,
+                        balance = BalanceType.INCREASE,
+                        description = "Payment for Invoice ${transaction.reference}".toInput()
+                    ))
+                }
+            // Generate the metadata
+            val metadata = (JsonUtil.objectReader.createObjectNode() as ObjectNode).also { it.putPOJO("upwork", transaction.source) };
+            // Create the money transaction
+            val moneyTransactionInput = MoneyTransactionCreateInput(
+                business.fragments.businessFragment.id,
+                Uuid.randomUUID().toString(),
+                WaveSvc.inputDateFormat.format(transaction.datePosted),
+                transaction.description,
+                metadata.toPrettyString().toInput(),
+                anchor,
+                items
+            )
+            // Submit it for creation
+            val createMoneyTransactionCreate = waveSvc.createMoneyTransaction(moneyTransactionInput)
+            payment = createMoneyTransactionCreate
+            ?.let {
+                    if(it.didSucceed) {
+                        log.info("Created payment for invoice (${invoice.fragments.invoiceFragment.invoiceNumber})")
+                        it.transaction
+                    } else {
+                        log.info("Failed to create payment for invoice (${invoice.fragments.invoiceFragment.invoiceNumber}). Errors: ${it.inputErrors}")
+                        null
+                    }
+                }
+        } else {
+            log.warn("Failed to locate account ${accountMappings[transaction.typeKey]} for invoice ${transaction.reference}. Skipping!")
+        }
+        return payment
     }
 
     private fun processExpense(transaction: ObjectNode): Unit {

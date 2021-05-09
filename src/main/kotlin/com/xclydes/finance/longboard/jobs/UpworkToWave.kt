@@ -24,7 +24,7 @@ class UpworkToWave(
         businessOpt.orElseThrow { IllegalStateException("Failed to find business with ID $syncBusiness") }
         // Process the business found
         businessOpt.ifPresent { business ->
-            log.warn("Processing business ${business.name}")
+            log.warn("Processing business ${business.fragments.businessFragment.name}")
             // Sync the clients
             val customers = syncClients.execute(business)
             log.debug("Customer List: $customers")

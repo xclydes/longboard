@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.svc.WaveSvc
 import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
+import com.xclydes.finance.longboard.wave.fragment.CustomerFragment
 import org.springframework.core.convert.ConversionService
 import org.springframework.core.convert.TypeDescriptor
 import org.springframework.stereotype.Component
@@ -47,12 +48,16 @@ class UpworkToWaveConversion(private val waveSvc: WaveSvc) : ConversionService {
     override fun convert(source: Any?, sourceType: TypeDescriptor?, targetType: TypeDescriptor): Any? =
         convert(source, targetType.objectType)
 
-    private fun asCustomer(source: JsonNode) : GetBusinessCustomersQuery.Node = GetBusinessCustomersQuery.Node(
-        displayId =  source.required("reference").asText(),
-        name =  source.required("company_name").asText(),
-        internalNotes = (objectReader.createObjectNode() as ObjectNode).putPOJO("upwork", source).toPrettyString(),
-        firstName =  source.required("name").asText(),
-        lastName = "",
-        id = ""
+    private fun asCustomer(source: JsonNode) : GetBusinessCustomersQuery.Node = GetBusinessCustomersQuery.Node(fragments =
+        GetBusinessCustomersQuery.Node.Fragments(
+            CustomerFragment(
+                displayId =  source.required("reference").asText(),
+                name =  source.required("company_name").asText(),
+                internalNotes = (objectReader.createObjectNode() as ObjectNode).putPOJO("upwork", source).toPrettyString(),
+                firstName =  source.required("name").asText(),
+                lastName = "",
+                id = ""
+            )
+        )
     )
 }

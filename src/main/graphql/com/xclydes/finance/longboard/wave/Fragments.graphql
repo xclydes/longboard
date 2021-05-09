@@ -1,0 +1,187 @@
+fragment InvoiceFragment on Invoice {
+    title
+    amountTitle
+    dueDate
+    id
+    invoiceDate
+    invoiceNumber
+    amountDue {
+        currency {
+            code
+            name
+            symbol
+        }
+        raw
+        value
+    }
+    amountPaid {
+        currency {
+            code
+            name
+            symbol
+        }
+        raw
+        value
+    }
+    currency {
+        code
+        name
+        symbol
+    }
+    customer {
+        id
+        displayId
+        internalNotes
+        name
+    }
+    items {
+        account {
+            currency {
+                code
+                name
+                symbol
+            }
+            displayId
+            id
+            name
+            description
+            type {
+                name
+                value
+            }
+            subtype {
+                name
+                value
+                type {
+                    name
+                    value
+                }
+            }
+        }
+        description
+        product {
+            description
+            expenseAccount {
+                displayId
+                id
+                description
+                name
+            }
+        }
+        quantity
+        subtotal {
+            currency {
+                code
+                name
+                symbol
+            }
+            raw
+            value
+        }
+        taxes {
+            amount {
+                currency {
+                    code
+                    name
+                    symbol
+                }
+                raw
+                value
+            }
+            rate
+            salesTax {
+                abbreviation
+                description
+                id
+                isCompound
+                name
+                rates {
+                    effective
+                    rate
+                }
+            }
+        }
+        total {
+            currency {
+                code
+                name
+                symbol
+            }
+            raw
+            value
+        }
+        unitPrice
+    }
+}
+
+fragment ProductFragment on Product {
+    id
+    name
+    description
+    unitPrice
+    isSold
+    isBought
+    isArchived
+    business {
+        id
+    }
+    incomeAccount {
+        id
+    }
+    expenseAccount {
+        id
+    }
+    defaultSalesTaxes {
+        id
+        name
+        abbreviation
+        description
+    }
+}
+
+fragment CustomerFragment on Customer {
+    id
+    displayId
+    firstName
+    lastName
+    name
+    internalNotes
+}
+
+fragment AccountFragment on Account {
+    id
+    displayId
+    name
+    description
+    type {
+        name
+        value
+    }
+    subtype {
+        name
+        value
+    }
+    currency {
+        code
+        name
+        symbol
+    }
+    balance
+    balanceInBusinessCurrency
+}
+
+fragment BusinessFragment on Business {
+    id
+    name
+    type {
+        name
+        value
+    }
+    subtype {
+        name
+        value
+    }
+    isClassicAccounting
+    isClassicInvoicing
+    isPersonal
+}

@@ -7,12 +7,7 @@ mutation CreateCustomer($input: CustomerCreateInput!) {
             path
         }
         customer {
-            id
-            displayId
-            firstName
-            lastName
-            name
-            internalNotes
+            ...CustomerFragment
         }
     }
 }

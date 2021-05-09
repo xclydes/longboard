@@ -10,28 +10,7 @@ query GetBusinessProducts($businessId: ID!, $prodPage: Int = 1, $prodPageSize: I
             }
             edges {
                 node {
-                    id
-                    name
-                    description
-                    unitPrice
-                    isSold
-                    isBought
-                    isArchived
-                    business {
-                        id
-                    }
-                    incomeAccount {
-                        id
-                    }
-                    expenseAccount {
-                        id
-                    }
-                    defaultSalesTaxes {
-                        id
-                        name
-                        abbreviation
-                        description
-                    }
+                    ... ProductFragment
                 }
             }
         }

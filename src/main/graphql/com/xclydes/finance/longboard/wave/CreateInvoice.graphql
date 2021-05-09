@@ -7,78 +7,7 @@ mutation CreateInvoice($input: InvoiceCreateInput!){
             code
         }
         invoice{
-            id
-            pdfUrl
-            viewUrl
-            status
-            poNumber
-            invoiceDate
-            amountDue {
-                raw
-                value
-                currency {
-                    code
-                    name
-                    symbol
-                }
-            }
-            amountPaid {
-                raw
-                value
-                currency {
-                    code
-                    name
-                    symbol
-                }
-            }
-            taxTotal {
-                raw
-                value
-                currency {
-                    code
-                    name
-                    symbol
-                }
-            }
-            total {
-                raw
-                value
-                currency {
-                    code
-                    name
-                    symbol
-                }
-            }
-            items {
-                account {
-                    id
-                }
-                description
-                quantity
-                unitPrice
-                subtotal {
-                    raw
-                    value
-                    currency {
-                        code
-                        name
-                        symbol
-                    }
-                }
-                total {
-                    raw
-                    value
-                    currency {
-                        code
-                        name
-                        symbol
-                    }
-                }
-                product {
-                    id
-                }
-            }
-            memo
+            ... InvoiceFragment
         }
     }
 }

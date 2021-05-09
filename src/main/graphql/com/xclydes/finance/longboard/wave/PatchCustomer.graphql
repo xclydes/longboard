@@ -7,12 +7,7 @@ mutation PatchCustomer($input: CustomerPatchInput!) {
             message
         }
         customer {
-            id
-            displayId
-            firstName
-            lastName
-            name
-            internalNotes
+            ...CustomerFragment
         }
     }
 }

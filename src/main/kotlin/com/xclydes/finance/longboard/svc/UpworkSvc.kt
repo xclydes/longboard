@@ -9,6 +9,7 @@ import com.Upwork.api.Routers.Reports.Finance.Earnings
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.config.*
+import com.xclydes.finance.longboard.util.DatesUtil
 import com.xclydes.finance.longboard.util.JsonUtil
 import com.xclydes.finance.longboard.util.JsonUtil.Companion.jsonArrayToList
 import com.xclydes.finance.longboard.util.JsonUtil.Companion.toJacksonArray
@@ -30,9 +31,9 @@ class UpworkSvc(@Autowired val client: OAuthClient,
                 @Value("\${longboard.upwork.params.account-ref}") val accountRef: String) {
 
     companion object {
-        val dateFormatSQL: DateFormat = SimpleDateFormat("yyyy-MM-dd")
-        val dateFormatReport: DateFormat = SimpleDateFormat("yyyyMMdd")
-        val dateFormatDescription: DateFormat = SimpleDateFormat("MM/dd/yyyy")
+        val dateFormatSQL: DateFormat by lazyOf(DatesUtil.dateFormatSQL)
+        val dateFormatReport: DateFormat by lazyOf(DatesUtil.dateFormatReport)
+        val dateFormatDescription: DateFormat by lazyOf(DatesUtil.dateFormatDescription)
         val patternInvoiceDescription = Pattern.compile("^\\((.+)\\) ([^-\\s]+) - (\\d{1,2}):(\\d{2})\\shrs @ \\\$([^/]*)/hr - ([\\d-/]*) - ([\\d-/]*)\$")
     }
 

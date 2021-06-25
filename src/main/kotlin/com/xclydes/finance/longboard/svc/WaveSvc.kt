@@ -6,6 +6,7 @@ import com.apollographql.apollo.api.toInput
 import com.apollographql.apollo.coroutines.await
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.config.*
+import com.xclydes.finance.longboard.util.DatesUtil
 import com.xclydes.finance.longboard.util.JsonUtil
 import com.xclydes.finance.longboard.wave.*
 import com.xclydes.finance.longboard.wave.GetBusinessQuery.Business
@@ -37,8 +38,8 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
         const val ID_INVOICE: String = "Invoice";
         const val ID_TRANSACTION: String = "Transaction";
 
-        val inputDateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd")
-        val reportDateFormat: DateFormat = SimpleDateFormat("yyyyMMdd")
+        val inputDateFormat: DateFormat by lazyOf(DatesUtil.dateFormatSQL)
+        val reportDateFormat: DateFormat by lazyOf(DatesUtil.dateFormatReport)
     }
 
     @Cacheable(cacheNames = [WAVE_APIID])
@@ -116,6 +117,9 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
         mutationResult.data?.invoiceCreate
     }
 
+    /**
+     * @param method Can be bank_transfer, cash, cheque, credit_card, paypal, other
+     */
     fun payInvoice(invoice: GetBusinessInvoiceQuery.Invoice,
                    account: GetBusinessAccountsQuery.Node,
                     payment: Double,
@@ -155,6 +159,10 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
         mutationResult.data?.moneyTransactionCreate
     }
     /* End Invoices */
+
+    /* Start Bills */
+
+    /* End Bills */
 
     /* Start Countries */
     @Cacheable(cacheNames = [WAVE_COUNTRIES])
@@ -235,7 +243,7 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
                 businessID, Input.fromNullable(page), Input.fromNullable(pageSize),
             )
         )?.await()
-        Optional.ofNullable(businessResponse?.data?.business?.products?.edges?.mapNotNull {  it.node })
+        Optional.ofNullable(businessResponse?.data?.business?.products?.edges?.map {  it.node })
     }
     /* End Products */
 

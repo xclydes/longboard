@@ -4,16 +4,19 @@ import com.apollographql.apollo.api.toInput
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.xclydes.finance.longboard.svc.UpworkSvc
 import com.xclydes.finance.longboard.svc.WaveSvc
+import com.xclydes.finance.longboard.util.DatesUtil
 import com.xclydes.finance.longboard.util.JsonUtil
-import com.xclydes.finance.longboard.wave.*
+import com.xclydes.finance.longboard.wave.CreateTransactionMutation
+import com.xclydes.finance.longboard.wave.GetBusinessCustomersQuery
+import com.xclydes.finance.longboard.wave.GetBusinessInvoiceQuery
+import com.xclydes.finance.longboard.wave.GetBusinessQuery
 import com.xclydes.finance.longboard.wave.type.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.text.DateFormat
-import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
+import kotlin.math.absoluteValue
 
 @Component
 class SyncTransactions(
@@ -24,7 +27,7 @@ class SyncTransactions(
 ) {
 
     private val log by lazyOf(LoggerFactory.getLogger(javaClass))
-    private val dateFormatHuman: DateFormat by lazyOf( SimpleDateFormat("MMM dd, yyyy"))
+    private val dateFormatHuman: DateFormat by lazyOf(DatesUtil.dateFormatHuman)
 
 
     internal data class TransactionWrapper(val source: ObjectNode,
@@ -46,8 +49,8 @@ class SyncTransactions(
         // Fetch and process the list of transactions, for the period, from Upwork
 //        val transactionsForPeriod = upworkSvc.earnings(rptStartDate, rptEndDate)
         val transactionsForPeriod = upworkSvc.accountsForEntity(rptStartDate, rptEndDate)
-        log.debug("Transactions for $rptStartDate -> $rptEndDate\r\n===\r\n${transactionsForPeriod.toPrettyString()}")
-        val resolvedTransactions = transactionsForPeriod
+        log.trace("Transactions for $rptStartDate -> $rptEndDate\r\n===\r\n${transactionsForPeriod.toPrettyString()}")
+        return transactionsForPeriod
             .map { transaction ->
                 // The transaction should be an object node
                 val transactionObj = TransactionWrapper(
@@ -63,7 +66,7 @@ class SyncTransactions(
                 // Locate the customer, if any
                 val customerId = if (transaction.has("buyer_team__reference"))
                     transaction.required("buyer_team__reference").textValue()
-                    else ""
+                else ""
                 // If there is a valid team reference
                 if (!customerId.isNullOrEmpty()) {
                     // Locate the customer
@@ -72,10 +75,8 @@ class SyncTransactions(
                 // Save the transaction details
                 processTransaction(business, transactionObj)
             }
-            .fold(ArrayList<Any?>()) { carry, list -> carry.also { it.addAll(list) } }
+            .fold<List<Any?>, ArrayList<Any?>>(ArrayList()) { carry, list -> carry.also { it.addAll(list) } }
             .filterNotNull()
-        //log.debug("\r\nCustomer $sharedId\r\n===\r\n\tTransactions: $customerTransactions\r\n\tInvoices\r\n\t---\r\n\t\tExisting: $customerInvoices\r\n\t\tResolved: $resolvedInvoices\r\n===")
-        return resolvedTransactions
     }
 
     private fun processTransaction(
@@ -91,6 +92,7 @@ class SyncTransactions(
             }
         }
         // Process as a bill
+       // generateTransaction(transaction, business)
         return generatedEntries
     }
 
@@ -130,8 +132,6 @@ class SyncTransactions(
                         unitPrice = unitPrice.toInput()
                     )
                 )
-                // Generate the metadata
-                val metadata = JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) };
                 // Create an invoice
                 val invoiceInput = InvoiceCreateInput(
                     business.fragments.businessFragment.id,
@@ -178,11 +178,11 @@ class SyncTransactions(
                 account,
                 transaction.amount,
                 transaction.datePosted,
-                "cash",
+                "other",
                 JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) }.toPrettyString(),
             )?.let {
                 val paymentId = it.required("id").textValue()
-                log.info("Created payment ${paymentId} for invoice ${invoice.fragments.invoiceFragment.invoiceNumber}")
+                log.info("Created payment $paymentId for invoice ${invoice.fragments.invoiceFragment.invoiceNumber}")
                 paymentId
             }
         } else {
@@ -191,7 +191,60 @@ class SyncTransactions(
         return payment
     }
 
-    private fun processExpense(transaction: ObjectNode): Unit {
-     // Record a negative transaction
+    private fun generateTransaction(transaction: TransactionWrapper, business: GetBusinessQuery.Business): CreateTransactionMutation.Transaction? {
+        var entry: CreateTransactionMutation.Transaction? = null
+        // If the amount is negative
+        if(transaction.amount < 0) {
+            // Resolve the account to be updated
+            val account = accountMappings[transaction.typeKey]
+                ?.let{ acctId -> waveSvc.businessAccounts(business.fragments.businessFragment.id)
+                    ?.find { acct -> acct.fragments.accountFragment.id == acctId } }
+            // If the account was found
+            if(account != null) {
+                // Create the anchor
+                val anchor = MoneyTransactionCreateAnchorInput(
+                    account.fragments.accountFragment.id,
+                    transaction.amount.absoluteValue,
+                    TransactionDirection.WITHDRAWAL
+                )
+                val items = ArrayList<MoneyTransactionCreateLineItemInput>()
+                    .also {
+                        it.add(MoneyTransactionCreateLineItemInput(
+                            accountId = account.fragments.accountFragment.id,
+                            //customerId = invoice.fragments.invoiceFragment.customer.id.toInput(),
+                            amount = transaction.amount,
+                            balance = BalanceType.DECREASE,
+                            description = "${transaction.subType} - ${transaction.reference}".toInput()
+                        ))
+                    }
+                // Generate the metadata
+                val metadata = JsonUtil.newObject().also { it.putPOJO("upwork", transaction.source) }
+                // Create the money transaction
+                val moneyTransactionInput = MoneyTransactionCreateInput(
+                    business.fragments.businessFragment.id,
+                    transaction.reference,
+                    WaveSvc.inputDateFormat.format(transaction.dateDue),
+                    transaction.description,
+                    metadata.toPrettyString().toInput(),
+                    anchor,
+                    items
+                )
+                // Submit it for creation
+                val createMoneyTransactionCreate = waveSvc.createMoneyTransaction(moneyTransactionInput)
+                entry = createMoneyTransactionCreate
+                    ?.let {
+                        if(it.didSucceed) {
+                            log.info("Created transaction ${it.transaction?.id} (${transaction.reference})")
+                            it.transaction
+                        } else {
+                            log.info("Failed to create transaction for ${transaction.subType} (${transaction.reference}). Errors: ${it.inputErrors}")
+                            null
+                        }
+                    }
+            } else {
+                log.warn("Failed to locate account ${accountMappings[transaction.typeKey]} for transaction ${transaction.reference}. Skipping!")
+            }
+        }
+        return entry
     }
 }

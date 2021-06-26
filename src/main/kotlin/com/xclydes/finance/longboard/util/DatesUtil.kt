@@ -1,7 +1,5 @@
 package com.xclydes.finance.longboard.util
 
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 import java.time.format.DateTimeFormatter
 
 class DatesUtil {

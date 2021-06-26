@@ -22,9 +22,6 @@ import org.springframework.http.RequestEntity
 import org.springframework.stereotype.Service
 import org.springframework.util.Base64Utils
 import org.springframework.web.client.RestTemplate
-import java.text.DateFormat
-import java.text.SimpleDateFormat
-import java.time.Instant
 import java.time.LocalDate
 import java.util.*
 

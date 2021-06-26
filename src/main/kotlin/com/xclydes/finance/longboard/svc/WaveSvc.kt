@@ -25,6 +25,7 @@ import org.springframework.web.client.RestTemplate
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.util.*
 
 @Service
@@ -38,8 +39,8 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
         const val ID_INVOICE: String = "Invoice";
         const val ID_TRANSACTION: String = "Transaction";
 
-        val inputDateFormat: DateFormat by lazyOf(DatesUtil.dateFormatSQL)
-        val reportDateFormat: DateFormat by lazyOf(DatesUtil.dateFormatReport)
+        val inputDateFormat by lazyOf(DatesUtil.dateFormatSQL)
+        val reportDateFormat by lazyOf(DatesUtil.dateFormatReport)
     }
 
     @Cacheable(cacheNames = [WAVE_APIID])
@@ -84,10 +85,11 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
 
     /* Start Invoices */
     @Cacheable(cacheNames = [WAVE_INVOICES])
-    fun invoices(businessID: String,
-                 from: Date = Date.from(Instant.EPOCH), to:Date = Date(),
-                 page: Int = 1, pageSize: Int = 99,
-                 invoiceRef: String? = null
+    fun invoices(
+        businessID: String,
+        from: LocalDate = LocalDate.EPOCH, to: LocalDate = LocalDate.now(),
+        page: Int = 1, pageSize: Int = 99,
+        invoiceRef: String? = null
     ) : List<GetBusinessInvoicesQuery.Node>? = runBlocking {
         // No from is set
         val invoicesResponse = clientGraphQL.query(
@@ -122,10 +124,10 @@ class WaveSvc(@Autowired @Qualifier("wave-graphql") val clientGraphQL: ApolloCli
      */
     fun payInvoice(invoice: GetBusinessInvoiceQuery.Invoice,
                    account: GetBusinessAccountsQuery.Node,
-                    payment: Double,
-                   paymentDate: Date = Date(),
+                   payment: Double,
+                   paymentDate: LocalDate = LocalDate.now(),
                    method: String = "bank_transfer",
-                    memo: String? = null,
+                   memo: String? = null,
                     ): ObjectNode? {
         // Decode the invoice ID
         val decodedInvoiceID = decodeId(invoice.fragments.invoiceFragment.id)

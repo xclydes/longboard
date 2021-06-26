@@ -14,7 +14,7 @@ import com.xclydes.finance.longboard.wave.type.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import java.text.DateFormat
+import java.time.LocalDate
 import java.util.*
 import kotlin.math.absoluteValue
 
@@ -27,12 +27,12 @@ class SyncTransactions(
 ) {
 
     private val log by lazyOf(LoggerFactory.getLogger(javaClass))
-    private val dateFormatHuman: DateFormat by lazyOf(DatesUtil.dateFormatHuman)
+    private val dateFormatHuman by lazyOf(DatesUtil.dateFormatHuman)
 
 
     internal data class TransactionWrapper(val source: ObjectNode,
                                            val amount: Double,val description: String,
-                                           val reference: String, val datePosted: Date, val dateDue: Date,
+                                           val reference: String, val datePosted: LocalDate, val dateDue: LocalDate,
                                            val type: String, val subType: String,
                                            val typeKey: String = "${type}-${subType}",
                                            var customer: GetBusinessCustomersQuery.Node? = null,
@@ -40,8 +40,8 @@ class SyncTransactions(
 
     fun execute(
         business: GetBusinessQuery.Business,
-        rptStartDate: Date,
-        rptEndDate: Date
+        rptStartDate: LocalDate,
+        rptEndDate: LocalDate
     ): List<Any> {
         // Get the wave customers for the business. This should be coming from the cache
         val customers = waveSvc.businessCustomers(business.fragments.businessFragment.id).orElse(emptyList())
@@ -60,8 +60,8 @@ class SyncTransactions(
                     type = transaction.required("type").textValue(),
                     subType = transaction.required("subtype").textValue(),
                     description = transaction.required("description").textValue(),
-                    datePosted = UpworkSvc.dateFormatReport.parse(transaction.required("date").textValue()),
-                    dateDue = UpworkSvc.dateFormatReport.parse(transaction.required("date_due").textValue()),
+                    datePosted = LocalDate.parse(transaction.required("date").textValue(), UpworkSvc.dateFormatReport),
+                    dateDue = LocalDate.parse(transaction.required("date_due").textValue(), UpworkSvc.dateFormatReport),
                 )
                 // Locate the customer, if any
                 val customerId = if (transaction.has("buyer_team__reference"))
@@ -113,10 +113,10 @@ class SyncTransactions(
                 // If it matches
                 var quantity = 1.0
                 var unitPrice = transaction.amount
-                var invoiceTitle = "Week ending ${dateFormatHuman.format(transaction.datePosted)}"
+                var invoiceTitle = "Week ending ${transaction.datePosted.format(dateFormatHuman)}"
                 var description = transaction.description
                 if(descriptionMatcher.matches()) {
-                    quantity = descriptionMatcher.group(3).toDouble() + (descriptionMatcher.group(4).toInt()/60).toDouble()
+                    quantity = descriptionMatcher.group(3).toDouble() + (descriptionMatcher.group(4).toDouble()/60.0).toDouble()
                     unitPrice = descriptionMatcher.group(5).toDouble()
                     invoiceTitle = "Week of ${dateFormatHuman.format(UpworkSvc.dateFormatDescription.parse(descriptionMatcher.group(6)))} to ${dateFormatHuman.format(UpworkSvc.dateFormatDescription.parse(descriptionMatcher.group(7)))}"
                     description = "${descriptionMatcher.group(1)} - ${descriptionMatcher.group(2)}"

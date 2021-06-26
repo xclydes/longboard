@@ -2,14 +2,15 @@ package com.xclydes.finance.longboard.util
 
 import java.text.DateFormat
 import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
 
 class DatesUtil {
 
     companion object {
-        val dateFormatHuman: DateFormat by lazyOf( SimpleDateFormat("MMM dd, yyyy"))
-        val dateFormatSQL: DateFormat by lazyOf(SimpleDateFormat("yyyy-MM-dd"))
-        val dateFormatReport: DateFormat by lazyOf(SimpleDateFormat("yyyyMMdd"))
-        val dateFormatDescription: DateFormat by lazyOf(SimpleDateFormat("MM/dd/yyyy"))
+        val dateFormatHuman: DateTimeFormatter by lazyOf(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+        val dateFormatSQL: DateTimeFormatter by lazyOf(DateTimeFormatter.ISO_DATE)
+        val dateFormatReport: DateTimeFormatter by lazyOf(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val dateFormatDescription: DateTimeFormatter by lazyOf(DateTimeFormatter.ofPattern("MM/dd/yyyy"))
 
     }
 }

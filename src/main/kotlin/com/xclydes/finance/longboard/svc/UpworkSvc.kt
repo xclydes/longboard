@@ -15,12 +15,14 @@ import com.xclydes.finance.longboard.util.JsonUtil.Companion.jsonArrayToList
 import com.xclydes.finance.longboard.util.JsonUtil.Companion.toJacksonArray
 import com.xclydes.finance.longboard.util.JsonUtil.Companion.toJacksonObject
 import org.json.JSONObject
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
-import java.text.DateFormat
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.regex.Pattern
 
@@ -31,12 +33,14 @@ class UpworkSvc(@Autowired val client: OAuthClient,
                 @Value("\${longboard.upwork.params.account-ref}") val accountRef: String) {
 
     companion object {
-        val dateFormatSQL: DateFormat by lazyOf(DatesUtil.dateFormatSQL)
-        val dateFormatReport: DateFormat by lazyOf(DatesUtil.dateFormatReport)
-        val dateFormatDescription: DateFormat by lazyOf(DatesUtil.dateFormatDescription)
-        val patternInvoiceDescription = Pattern.compile("^\\((.+)\\) ([^-\\s]+) - (\\d{1,2}):(\\d{2})\\shrs @ \\\$([^/]*)/hr - ([\\d-/]*) - ([\\d-/]*)\$")
+        val TimeZone = ZoneOffset.UTC
+        val dateFormatSQL by lazyOf(DateTimeFormatter.ISO_DATE)
+        val dateFormatReport by lazyOf(DatesUtil.dateFormatReport)
+        val dateFormatDescription by lazyOf(DatesUtil.dateFormatDescription)
+        val patternInvoiceDescription: Pattern = Pattern.compile("^\\((.+)\\) ([^-\\s]+) - (\\d{1,2}):(\\d{2})\\shrs @ \\\$([^/]*)/hr - ([\\d-/]*) - ([\\d-/]*)\$")
     }
 
+    private val log by lazyOf(LoggerFactory.getLogger(javaClass))
     private val companies: Companies by lazy { Companies(client) }
     private val accounts: Accounts by lazy { Accounts(client) }
     private val teams: Teams by lazy { Teams(client) }
@@ -55,7 +59,7 @@ class UpworkSvc(@Autowired val client: OAuthClient,
             // Process each row
             jsonArrayToList(table.getJSONArray("rows")).stream()
                 .map { row -> row.getJSONArray("c") }
-                .map { valueArr -> jsonArrayToList(valueArr).map { vJson -> vJson.getString("v") } }
+                .map { valueArr -> jsonArrayToList(valueArr).map { vJson -> vJson.optString("v", "") } }
                 .forEach { valueList ->
                     with(JsonUtil.newObject()) {
                         valueList.onEachIndexed { index, value -> this.put(headings[index], value) }
@@ -76,7 +80,7 @@ class UpworkSvc(@Autowired val client: OAuthClient,
     fun teams(): Optional<ArrayNode> = Optional.ofNullable(toJacksonArray(teams.list.getJSONArray("teams")))
 
     @Cacheable(cacheNames = [UPWORK_EARNINGS])
-    fun earnings(from: Date, to:Date,
+    fun earnings(from: LocalDate, to:LocalDate,
                  userReference: String = "",
                  fields: String = earningsParams,
                  ): ArrayNode {
@@ -99,7 +103,7 @@ class UpworkSvc(@Autowired val client: OAuthClient,
     }
 
     @Cacheable(cacheNames = [UPWORK_ACCOUNTING])
-    fun accountsForEntity(from: Date, to:Date,
+    fun accountsForEntity(from: LocalDate, to:LocalDate,
                  acctRef: String = accountRef,
                  fields: String = accountingParams,
                  ): ArrayNode {
@@ -118,7 +122,7 @@ class UpworkSvc(@Autowired val client: OAuthClient,
     }
 
     @Cacheable(cacheNames = [UPWORK_ACCOUNTS])
-    fun accountsForUser(from: Date, to:Date,
+    fun accountsForUser(from: LocalDate, to:LocalDate,
                         userReference: String,
                         fields: String = earningsParams): ArrayNode {
         var resolvedUserReference = userReference

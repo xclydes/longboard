@@ -5,7 +5,7 @@ It is written in Kotlin using the [Spring Boot Framework](https://spring.io/proj
 from the [Upwork API](https://developers.upwork.com/) 
 to the Wave via [their API](https://developer.waveapps.com/hc/en-us).
 
-# Configuration
+## Configuration
 
 Default values for the keys below can found in `src/main/resources/application.properties`
 
@@ -30,3 +30,6 @@ longboard.map.upwork.wave.accounts | A map of Upwork transaction types to Wave a
 longboard.sync.start | The earliest date (yyyy-MM-dd) from which to sync. Assumes the 1st of the current month if not set | String | |
 longboard.sync.end | The earliest date (yyyy-MM-dd) from which to sync. Assumes today if not set | String | |
 longboard.sync.span | The date interval to be used when batching requests. Not implemented, but fixed at 1 month. | String | |
+
+## Nuances
+There are a lot

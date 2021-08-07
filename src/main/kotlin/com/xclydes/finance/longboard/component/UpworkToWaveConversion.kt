@@ -25,11 +25,11 @@ class UpworkToWaveConversion(private val waveSvc: WaveSvc) : ConversionService {
         }
     }
 
-    override fun canConvert(sourceType: Class<*>?, targetType: Class<*>): Boolean =
-        sourceType is ObjectNode &&
-        (
-          GetBusinessCustomersQuery.Node::class.isInstance(targetType)
-        )
+    override fun canConvert(sourceType: Class<*>?, targetType: Class<*>): Boolean {
+        val isValidInput = sourceType != null && JsonNode::class.java.isAssignableFrom(sourceType);
+        val isValidOutput = (GetBusinessCustomersQuery.Node::class.java.isAssignableFrom(targetType))
+        return isValidInput && isValidOutput;
+    }
 
     override fun canConvert(sourceType: TypeDescriptor?, targetType: TypeDescriptor): Boolean =
         canConvert(sourceType!!.objectType, targetType.objectType)

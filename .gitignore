@@ -1,11 +1,14 @@
 HELP.md
+.http/
+.local/
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-**/.http
-**/.local
+
+### Customizations ###
+**/application-*.properties
 
 ### STS ###
 .apt_generated
@@ -37,4 +40,3 @@ out/
 
 ### VS Code ###
 .vscode/
-**/.graphqlconfig

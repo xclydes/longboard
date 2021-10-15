@@ -2,17 +2,18 @@ package com.xclydes.finance.longboard.functions;
 
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.CorePublisher;
 
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
-public abstract class AbsAPIConsumer<C> {
+public abstract class AbsAPIWrapper<C> {
+
+    public static Predicate<String> PREDICATE_NONEMPTY = s -> StringUtils.hasText(StringUtils.trimWhitespace(s));
 
     private final IClientProvider<C> clientProvider;
 
-    public AbsAPIConsumer(IClientProvider<C> clientProvider) {
+    public AbsAPIWrapper(IClientProvider<C> clientProvider) {
         this.clientProvider = clientProvider;
     }
 

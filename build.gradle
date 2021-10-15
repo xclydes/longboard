@@ -39,6 +39,9 @@ dependencies {
 	// Spring GraphQL Boot starter
 	//implementation 'org.springframework.experimental:graphql-spring-boot-starter:1.0.0-SNAPSHOT'
 
+	// Proxy
+	implementation group: 'com.github.mkopylec', name: 'charon-spring-webflux', version: '4.10.0'
+
 	// Upwork
 	implementation("com.Upwork:api:1.0.1")
 

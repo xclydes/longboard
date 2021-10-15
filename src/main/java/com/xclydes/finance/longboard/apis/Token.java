@@ -1,5 +1,6 @@
 package com.xclydes.finance.longboard.apis;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -29,6 +30,7 @@ public class Token {
         return this.hasKey() || this.hasSecret();
     }
 
+    @JsonIgnore
     public boolean isComplete() {
         return this.hasKey() && this.hasSecret();
     }

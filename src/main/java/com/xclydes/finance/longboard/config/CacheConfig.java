@@ -12,6 +12,7 @@ public class CacheConfig {
 
     public static final String WAVE_APICLIENT_GRAPHQL = "wave.api_client.graphql";
     public static final String WAVE_APICLIENT_REST = "wave.api_client.rest";
+    public static final String WAVE_OAUTH_URL = "wave.oauth.url";
     public static final String WAVE_APIID = "wave.api_id";
     public static final String WAVE_COUNTRIES = "wave.countries";
     public static final String WAVE_BUSINESSES = "wave.businesses";
@@ -27,6 +28,7 @@ public class CacheConfig {
     public static final String WAVE_USER = "wave.user";
 
     public static final String UPWORK_APICLIENT = "upwork.api_client";
+    public static final String UPWORK_ACCESSTOKEN = "upwork.token.access";
     public static final String UPWORK_USER = "upwork.user";
     public static final String UPWORK_TEAMS = "upwork.teams";
     public static final String UPWORK_COMPANY = "upwork.company";
@@ -38,10 +40,10 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         final ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
-                WAVE_APICLIENT_REST, WAVE_APICLIENT_GRAPHQL,
+                WAVE_APICLIENT_REST, WAVE_APICLIENT_GRAPHQL, WAVE_OAUTH_URL,
                 WAVE_COUNTRIES, WAVE_BUSINESS, WAVE_BUSINESSES, WAVE_INVOICE, WAVE_INVOICES, WAVE_ACCOUNT, WAVE_ACCOUNTS,
                 WAVE_CUSTOMER, WAVE_CUSTOMERS, WAVE_PRODUCT, WAVE_PRODUCTS, WAVE_USER, WAVE_APIID,
-                UPWORK_APICLIENT,
+                UPWORK_APICLIENT, UPWORK_ACCESSTOKEN,
                 UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS, UPWORK_USER, UPWORK_ACCOUNTING, UPWORK_ACCOUNTS
         );
         // TODO Use redis if it is configured

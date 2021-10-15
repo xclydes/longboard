@@ -1,6 +1,7 @@
 package com.xclydes.finance.longboard.controllers;
 
 import com.xclydes.finance.longboard.apis.IClientProvider;
+import com.xclydes.finance.longboard.models.Token;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -13,6 +14,8 @@ import java.util.function.Predicate;
 
 @Getter
 public abstract class AbsAPIController<C> {
+
+    public static final String TOKEN_HEADER_NAME = "x-proxy-authorization";
 
     public static Predicate<String> PREDICATE_NONEMPTY = s -> StringUtils.hasText(StringUtils.trimWhitespace(s));
 
@@ -37,7 +40,11 @@ public abstract class AbsAPIController<C> {
         return value;
     }
 
-    protected static <T> Mono<T> wrapLogic(final Consumer<MonoSink<T>> consumer) {
+    public Token requiresToken(final String input) {
+        return Token.of(requires(input, StringUtils::hasText, String.format("A valid token is required via the '%s' header", TOKEN_HEADER_NAME)));
+    }
+
+    public static <T> Mono<T> wrapLogic(final Consumer<MonoSink<T>> consumer) {
         return Mono.create(consumer).onErrorStop();
     }
 }

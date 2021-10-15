@@ -15,6 +15,7 @@ import com.xclydes.finance.longboard.wave.GetBusinessQuery;
 import com.xclydes.finance.longboard.wave.GetUserQuery;
 import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -38,6 +39,7 @@ import static com.xclydes.finance.longboard.util.GraphQLUtil.unwrapNestedElement
 
 @Service
 @Getter
+@Slf4j
 public class WaveSvc {
 
     public static Consumer<ApolloException> ApolloExceptionNoOp = (e) -> {
@@ -190,13 +192,15 @@ public class WaveSvc {
     }
 
     @Cacheable(cacheNames = {WAVE_BUSINESS})
-    public Mono<Optional<GetBusinessQuery.Business>> business(final Token token, final String businessID) {
+    public Mono<Optional<BusinessFragment>> business(final Token token, final String businessID) {
         return processQuery(provideGraphQLClient(token), new GetBusinessQuery(businessID), (dataResponse) -> {
             // Throw the errors if any
             GraphQLUtil.throwErrors(dataResponse);
             // Otherwise, process the response
             return Optional.ofNullable(dataResponse.getData())
-                    .map(GetBusinessQuery.Data::business);
+                    .map(GetBusinessQuery.Data::business)
+                    .map(business -> business.fragments())
+                    .map(fragments -> fragments.businessFragment());
         });
     }
 }

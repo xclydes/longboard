@@ -1,7 +1,6 @@
 package com.xclydes.finance.longboard.util;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.function.Supplier;
 
 public class DatesUtil
@@ -46,7 +45,7 @@ public class DatesUtil
 
     public static DateTimeFormatter formatterDescriptive() {
         return getOrInit(dateFormatDescription, () -> {
-            dateFormatDescription = DateTimeFormatter.ofPattern("DateTimeFormatter.ofPattern(\"MM/dd/yyyy");
+            dateFormatDescription = DateTimeFormatter.ofPattern("MM/dd/yyyy");
             return dateFormatDescription;
         });
     }

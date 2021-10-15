@@ -1,7 +1,9 @@
 type Query {
     upworkLogin: RequestDetails,
     upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
+
     waveLogin(state: String!): RequestDetails
+    waveBusiness(id: ID!): Business
     waveBusinesses(page: Int, pageSize: Int): [BusinessPage]
 }
 
@@ -13,12 +15,12 @@ type PageInfo {
 }
 
 type AccessToken {
-    key: String!,
+    key: ID!,
     secret: String
 }
 
 type RequestDetails {
-    key: String!
+    key: ID!
     secret: String
     url: String!
 }
@@ -29,7 +31,7 @@ type RecordType {
 }
 
 type Business {
-    id: String!
+    id: ID!
     name: String!
     type: RecordType
     subType: RecordType

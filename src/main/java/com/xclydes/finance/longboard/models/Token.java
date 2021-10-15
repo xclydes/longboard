@@ -1,17 +1,21 @@
-package com.xclydes.finance.longboard.apis;
+package com.xclydes.finance.longboard.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.util.StringUtils;
 
+import java.io.Serializable;
+
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
-public class Token {
+@Setter
+public class Token implements Serializable {
 
     public final static Token EMPTY = Token.of("");
 

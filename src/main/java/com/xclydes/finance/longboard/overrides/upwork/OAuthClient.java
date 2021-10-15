@@ -1,7 +1,7 @@
 package com.xclydes.finance.longboard.overrides.upwork;
 
 import com.Upwork.api.UpworkRestClient;
-import com.xclydes.finance.longboard.apis.Token;
+import com.xclydes.finance.longboard.models.Token;
 import oauth.signpost.OAuthConsumer;
 import oauth.signpost.OAuthProvider;
 import oauth.signpost.commonshttp.CommonsHttpOAuthConsumer;

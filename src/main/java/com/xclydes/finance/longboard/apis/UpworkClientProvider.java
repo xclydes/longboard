@@ -1,6 +1,7 @@
 package com.xclydes.finance.longboard.apis;
 
 import com.xclydes.finance.longboard.config.CacheConfig;
+import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.overrides.upwork.OAuthClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;

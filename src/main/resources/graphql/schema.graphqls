@@ -1,0 +1,51 @@
+type Query {
+    upworkLogin: RequestDetails,
+    upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
+    waveLogin(state: String!): RequestDetails
+    waveBusinesses(page: Int, pageSize: Int): [BusinessPage]
+}
+
+type PageInfo {
+    pageSize: Int!
+    currentPage: Int!
+    totalPages: Int!
+    totalCount: Int!
+}
+
+type AccessToken {
+    key: String!,
+    secret: String
+}
+
+type RequestDetails {
+    key: String!
+    secret: String
+    url: String!
+}
+
+type RecordType {
+    name: String!
+    value: String!
+}
+
+type Business {
+    id: String!
+    name: String!
+    type: RecordType
+    subType: RecordType
+    isClassicAccounting: Boolean
+    isClassicInvoicing: Boolean
+    isPersonal: Boolean
+}
+
+type BusinessPage {
+    pagination: PageInfo!
+    fragment: [Business]
+}
+
+input TokenInput {
+    key: String!,
+    secret: String
+}
+
+

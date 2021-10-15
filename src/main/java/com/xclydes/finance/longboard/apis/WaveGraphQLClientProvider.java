@@ -3,6 +3,7 @@ package com.xclydes.finance.longboard.apis;
 import com.apollographql.apollo.ApolloClient;
 import com.xclydes.finance.longboard.component.HttpLoggingInterceptor;
 import com.xclydes.finance.longboard.config.CacheConfig;
+import com.xclydes.finance.longboard.models.Token;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;

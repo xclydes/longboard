@@ -9,15 +9,18 @@ import com.xclydes.finance.longboard.models.Pagination;
 import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.util.ArrayUtil;
+import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.GraphQLUtil;
-import com.xclydes.finance.longboard.wave.BusinessListQuery;
-import com.xclydes.finance.longboard.wave.GetBusinessQuery;
-import com.xclydes.finance.longboard.wave.GetUserQuery;
+import com.xclydes.finance.longboard.wave.*;
 import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
+import com.xclydes.finance.longboard.wave.fragment.InvoiceFragment;
+import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
@@ -27,6 +30,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +55,9 @@ public class WaveSvc {
     public static final String ID_ACCOUNT = "Account";
     public static final String ID_INVOICE = "Invoice";
     public static final String ID_TRANSACTION = "Transaction";
+
+    public static final DateTimeFormatter inputDateFormat = DatesUtil.formatterSQL();
+    public static final DateTimeFormatter reportDateFormat = DatesUtil.formatterReport();
 
     private final IClientProvider<ApolloClient> clientProviderGQL;
     private final IClientProvider<WebClient> clientProviderRest;
@@ -82,6 +90,7 @@ public class WaveSvc {
         return getClientProviderGQL().getClient(token);
     }
 
+    @Cacheable(cacheNames = {WAVE_OAUTH_URL})
     public Mono<RequestToken> getLoginUrl(final String state) {
         final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder
                 .fromHttpUrl(loginUrl)
@@ -203,4 +212,81 @@ public class WaveSvc {
                     .map(fragments -> fragments.businessFragment());
         });
     }
+
+    @Cacheable(cacheNames = {WAVE_INVOICES})
+    public Mono<FragmentPage<InvoiceFragment>> invoices(
+            final Token token,
+            final String businessID ,
+            final LocalDate from,
+            final LocalDate to,
+            final Integer page,
+            final Integer pageSize,
+            final String invoiceRef
+            ) {
+        final LocalDate resolvedFrom = from == null ? LocalDate.EPOCH : from;
+        final LocalDate resolvedTo = from == null ? LocalDate.now() : to;
+        final int resolvedPage = page == null ? Integer.valueOf(1) : page;
+        final int resolvedPageSize = pageSize == null ? Integer.valueOf(99) : pageSize;
+        return processQuery(
+                provideGraphQLClient(token),
+                new GetBusinessInvoicesQuery(businessID,
+                    Input.fromNullable(invoiceRef),
+                    Input.fromNullable(inputDateFormat.format(resolvedFrom)),
+                    Input.fromNullable(inputDateFormat.format(resolvedTo)),
+                    Input.fromNullable(resolvedPage),
+                    Input.fromNullable(resolvedPageSize)
+                ),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    // Otherwise, process the response
+                    final List<InvoiceFragment> businessFragments = Optional
+                            .ofNullable(dataResponse.getData())
+                            .map(GetBusinessInvoicesQuery.Data::business)
+                            .map(GetBusinessInvoicesQuery.Business::invoices)
+                            .map(GetBusinessInvoicesQuery.Invoices::edges)
+                            .map(edges -> unwrapNestedElement(edges, GetBusinessInvoicesQuery.Edge::node))
+                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessInvoicesQuery.Node::fragments))
+                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessInvoicesQuery.Node.Fragments::invoiceFragment))
+                            .orElse(Collections.emptyList());
+                    final Pagination pagination = Optional
+                            .ofNullable(dataResponse.getData())
+                            .map(GetBusinessInvoicesQuery.Data::business)
+                            .map(GetBusinessInvoicesQuery.Business::invoices)
+                            .map(GetBusinessInvoicesQuery.Invoices::pageInfo)
+                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
+                            .orElse(Pagination.UNKNOWN);
+                    return new FragmentPage<>(pagination, businessFragments);
+                }
+        );
+    }
+
+    @Cacheable(cacheNames = {WAVE_INVOICE})
+    public Mono<Optional<InvoiceFragment>> invoice(final Token token,
+                                                  final String businessID,
+                                                  final String invoiceID) {
+        return processQuery(
+                provideGraphQLClient(token),
+                new GetBusinessInvoiceQuery(businessID, invoiceID),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    // Otherwise, process the response
+                    return Optional
+                            .ofNullable(dataResponse.getData())
+                            .map(GetBusinessInvoiceQuery.Data::business)
+                            .map(GetBusinessInvoiceQuery.Business::invoice)
+                            .map(GetBusinessInvoiceQuery.Invoice::fragments)
+                            .map(GetBusinessInvoiceQuery.Invoice.Fragments::invoiceFragment);
+                }
+        );
+    }
+
+    @CacheEvict({WAVE_INVOICE, WAVE_INVOICES})
+    public Mono<CreateInvoiceMutation.InvoiceCreate> createInvoice(final InvoiceCreateInput invoice) {
+//        val mutationResult = clientGraphQL.mutate(CreateInvoiceMutation(invoice)).await()
+//        mutationResult.data?.invoiceCreate
+        return Mono.empty();
+    }
+
 }

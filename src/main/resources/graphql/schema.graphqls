@@ -1,6 +1,12 @@
 type Query {
     upworkLogin: RequestDetails,
     upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
+    upworkUser(token: TokenInput!): UpworkUser
+    upworkCompanies(token: TokenInput!): [UpworkCompany]
+    upworkTeams(token: TokenInput!): [UpworkTeam]
+    upworkEarnings(token: TokenInput!, from: String, to: String): [UpworkEarning]
+    upworkEntityAccounting(token: TokenInput!, ref: String!, from: String, to: String): [UpworkAccounting]
+    upworkUserAccounting(token: TokenInput!, ref: String, from: String, to: String): [UpworkAccounting]
 
     waveLogin(state: String!): RequestDetails
     waveBusiness(id: ID!): Business
@@ -43,6 +49,57 @@ type Business {
 type BusinessPage {
     pagination: PageInfo!
     fragment: [Business]
+}
+
+type UpworkUser {
+    id: ID!
+    reference: String!
+    timezone: String
+    status: String
+    timezone_offset: String
+    public_url: String
+    last_name: String
+    email: String
+    is_provider: String
+    first_name: String
+    profile_key: String
+}
+type UpworkCompany {
+    name: String!
+    owner_ciphertext: String
+    payment_verification_status: String
+    reference: String!
+}
+type UpworkTeam {
+    id: ID!
+    name: String!
+    reference: String!
+    company__reference: String!
+    parent_team__reference: String!
+    company_name: String
+    parent_team__id: String
+    parent_team__name: String
+}
+type UpworkEarning {
+    reference: String!
+    type: String!
+    subtype: String!
+    buyer_team__reference: String
+    date: String!
+    amount: String
+    description: String
+    date_due: String
+}
+type UpworkAccounting {
+    reference: String!
+    type: String!
+    subtype: String!
+    accounting_entity__reference: String
+    buyer_team__reference: String
+    date: String!
+    amount: String
+    description: String
+    date_due: String
 }
 
 input TokenInput {

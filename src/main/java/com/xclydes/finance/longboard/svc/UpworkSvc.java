@@ -16,6 +16,7 @@ import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.JsonUtil;
+import com.xclydes.finance.longboard.util.ValidationUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import oauth.signpost.OAuthConsumer;
@@ -96,6 +97,11 @@ public class UpworkSvc {
         return client.getAccessTokenSet(verifier);
     }
 
+    /**
+     *
+     * @param token
+     * @return
+     */
     @Cacheable(cacheNames = {UPWORK_USER})
     public Optional<User> user(final Token token) {
         try {
@@ -111,21 +117,51 @@ public class UpworkSvc {
         }
     }
 
-    @Cacheable(cacheNames = {UPWORK_COMPANY})
-    public List<Company> companies(final Token token) {
-        try {
-            final Companies companies = new Companies(getClientProvider().getClient(token));
-            final JSONObject companiesList = companies.getList();
-            final JSONArray companiesJson = companiesList.getJSONArray("companies");
-            return fromJsonArray(companiesJson, Company.class);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            return Collections.emptyList();
-        }
+    /**
+     *
+     * @param token
+     * @param ref
+     * @return
+     */
+    //@Cacheable(cacheNames = {UPWORK_COMPANY})
+    public List<Company> companies(final Token token, final String ref) {
+        // Initialize the Upwork wrapper
+        final Companies companies = new Companies(getClientProvider().getClient(token));
+        // Process the inputs
+        return Optional.ofNullable(ref)
+            .filter(StringUtils::hasText)
+            .map(companyRef -> {
+                List<Company> companyLst = Collections.emptyList();
+                try {
+                    final JSONObject companiesList = companies.getSpecific(ref);
+                    final JSONObject companiesJson = companiesList.getJSONObject("company");
+                    companyLst = Collections.singletonList(fromJson(companiesJson, Company.class));
+                } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                }
+                return companyLst;
+            })
+            .orElseGet(() -> {
+                List<Company> companyLst = Collections.emptyList();
+                try {
+                    final JSONObject companiesList = companies.getList();
+                    final JSONArray companiesJson = companiesList.getJSONArray("companies");
+                    companyLst = fromJsonArray(companiesJson, Company.class);
+                } catch (Exception e) {
+                    log.error(e.getMessage(), e);
+                }
+                return companyLst;
+            });
     }
 
+    /**
+     *
+     * @param token
+     * @param ref
+     * @return
+     */
     @Cacheable(cacheNames = {UPWORK_TEAMS})
-    public List<Team> teams(final Token token) {
+    public List<Team> teams(final Token token, final String ref) {
         try {
             final Teams teams = new Teams(getClientProvider().getClient(token));
             final JSONObject teamsList = teams.getList();
@@ -137,46 +173,206 @@ public class UpworkSvc {
         }
     }
 
-    @Cacheable(cacheNames = {UPWORK_EARNINGS})
-    public  List<Earning> earnings(final Token token,
-                              final LocalDate from,
-                              final LocalDate to,
-                              final String userReference
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
+    public  List<Earning> earningsForUser(final Token token,
+                                          final LocalDate from,
+                                          final LocalDate to,
+                                          final String ref
     ) {
         // Use the user provided, or the one the token belongs to
-        final String resolvedUserReference = resolveUserReference(token, userReference);
+        final String resolvedRef = resolveUserReference(token, ref);
+        List<Earning> earningList = Collections.emptyList();
         try {
-            // Build the parameters
-            final HashMap<String, String> params = new HashMap<>(1);
-            // Build the select query
-            params.put("tq", String.format("SELECT reference,buyer_team__reference,date,amount,type,subtype,description,date_due WHERE date >= '%s' AND date <= '%s'", dateFormatSQL.format(from), dateFormatSQL.format(to)));
-            // Re-map the entries
-            final Earnings earnings = new Earnings(getClientProvider().getClient(token));
-            final JSONObject earningResponse = earnings.getByFreelancer(resolvedUserReference, params);
-            // Flatten the table
-            return fromJsonArray(remapTable(earningResponse), Earning.class);
+            earningList = performEarningsQuery(
+                token, from, to,
+                (earnings, params) -> {
+                    try {
+                        return earnings.getByFreelancer(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            return Collections.emptyList();
         }
+        return earningList;
     }
 
-    @Cacheable(cacheNames = {UPWORK_ACCOUNTING})
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_COMPANY})
+    public  List<Earning> earningsForFreelancerCompany(final Token token,
+                                          final LocalDate from,
+                                          final LocalDate to,
+                                          final String ref
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(ref,
+                StringUtils::hasText, "A valid freelancer/company reference is required");
+        List<Earning> earningList = Collections.emptyList();
+        try {
+            earningList = performEarningsQuery(
+                token, from, to,
+                (earnings, params) -> {
+                    try {
+                        return earnings.getByFreelancersCompany(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return earningList;
+    }
+
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM})
+    public  List<Earning> earningsForFreelancerTeam(final Token token,
+                                          final LocalDate from,
+                                          final LocalDate to,
+                                          final String ref
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(ref,
+                StringUtils::hasText, "A valid freelancer/team reference is required");
+        List<Earning> earningList = Collections.emptyList();
+        try {
+            earningList = performEarningsQuery(
+                token, from, to,
+                (earnings, params) -> {
+                    try {
+                        return earnings.getByFreelancersTeam(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return earningList;
+    }
+
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
+    public  List<Earning> earningsForBuyersTeam(final Token token,
+                                          final LocalDate from,
+                                          final LocalDate to,
+                                          final String ref
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(ref,
+                StringUtils::hasText, "A valid buyers/team reference is required");
+        List<Earning> earningList = Collections.emptyList();
+        try {
+            earningList = performEarningsQuery(
+                token, from, to,
+                (earnings, params) -> {
+                    try {
+                        return earnings.getByBuyersTeam(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return earningList;
+    }
+
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
+    public  List<Earning> earningsForBuyersCompany(final Token token,
+                                          final LocalDate from,
+                                          final LocalDate to,
+                                          final String ref
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(ref,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        List<Earning> earningList = Collections.emptyList();
+        try {
+            earningList = performEarningsQuery(
+                token, from, to,
+                (earnings, params) -> {
+                    try {
+                        return earnings.getByBuyersCompany(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+        return earningList;
+    }
+
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param ref
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_ENTITY})
     public List<Accounting> accountsForEntity(final Token token,
                                               final LocalDate from,
                                               final LocalDate to,
-                                              final String acctRef
+                                              final String ref
     ) {
         // If a valid reference is not found
-        if (!StringUtils.hasText(acctRef)) throw new IllegalStateException("A valid account reference is required");
+        final String resolvedRef = ValidationUtil.requires(ref,
+                StringUtils::hasText, "A valid account reference is required");
+        List<Accounting> accountingList = Collections.emptyList();
         try {
-            return performAccountingQuery(
+            accountingList = performAccountingQuery(
                     token,
                     from,
                     to,
                     (accounts, params) -> {
                         try {
-                            return accounts.getSpecific(acctRef, params);
+                            return accounts.getSpecific(resolvedRef, params);
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -184,19 +380,28 @@ public class UpworkSvc {
             );
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            return Collections.emptyList();
         }
+        return accountingList;
     }
 
-    @Cacheable(cacheNames = {UPWORK_ACCOUNTS})
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param userReference
+     * @return
+     */
+    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_USER})
     public List<Accounting> accountsForUser(final Token token,
                                      final LocalDate from,
                                      final LocalDate to,
                                      final String userReference) {
         // Use the user provided, or the one the token belongs to
         final String resolvedUserReference = resolveUserReference(token, userReference);
+        List<Accounting> accountingList = Collections.emptyList();
         try {
-            return performAccountingQuery(
+            accountingList = performAccountingQuery(
                     token,
                     from,
                     to,
@@ -210,10 +415,19 @@ public class UpworkSvc {
             );
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            return Collections.emptyList();
         }
+        return accountingList;
     }
 
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param exec
+     * @return
+     * @throws Exception
+     */
     private List<Accounting> performAccountingQuery(final Token token,
                                                     final LocalDate from,
                                                     final LocalDate to,
@@ -230,6 +444,36 @@ public class UpworkSvc {
         return fromJsonArray(remapTable(accountResponse), Accounting.class);
     }
 
+    /**
+     *
+     * @param token
+     * @param from
+     * @param to
+     * @param exec
+     * @return
+     * @throws Exception
+     */
+    private List<Earning> performEarningsQuery(final Token token,
+                                                    final LocalDate from,
+                                                    final LocalDate to,
+                                                    final BiFunction<Earnings, HashMap<String, String>, JSONObject> exec) throws Exception {
+        // Build the parameters
+        final HashMap<String, String> params = new HashMap<>(1);
+        // Build the select query
+        params.put("tq", String.format("SELECT reference,buyer_team__reference,date,amount,type,subtype,description,date_due WHERE date >= '%s' AND date <= '%s'", dateFormatSQL.format(from), dateFormatSQL.format(to)));
+        // Re-map the entries
+        final Earnings earnings = new Earnings(getClientProvider().getClient(token));
+        final JSONObject earningResponse = exec.apply(earnings, params);
+        // Flatten the table
+        return fromJsonArray(remapTable(earningResponse), Earning.class);
+    }
+
+    /**
+     *
+     * @param token
+     * @param inputRef
+     * @return
+     */
     private String resolveUserReference(final Token token, final String inputRef) {
         // Use the user provided, or the one the token belongs to
         final String resolvedUserReference = Optional.ofNullable(inputRef)
@@ -241,18 +485,44 @@ public class UpworkSvc {
         return resolvedUserReference;
     }
 
-    private <T> T fromJson(final JSONObject json, Class<T> cls) throws JsonProcessingException {
-        return getObjectMapper().readValue(json.toString(), cls);
+    /**
+     *
+     * @param json
+     * @param cls
+     * @param <T>
+     * @return
+     */
+    private <T> T fromJson(final JSONObject json, Class<T> cls) {
+        try {
+            return getObjectMapper().readValue(json.toString(), cls);
+        } catch (JsonProcessingException jEx) {
+            throw new RuntimeException(jEx);
+        }
     }
 
-    private <T> List<T> fromJsonArray(final JSONArray json, Class<T> cls) throws JsonProcessingException {
-        return getObjectMapper().readValue(json.toString(),
-                getObjectMapper().getTypeFactory().constructCollectionType(List.class, cls));
+    /**
+     *
+     * @param json
+     * @param cls
+     * @param <T>
+     * @return
+     */
+    private <T> List<T> fromJsonArray(final JSONArray json, Class<T> cls){
+        try {
+            return getObjectMapper().readValue(json.toString(),
+                    getObjectMapper().getTypeFactory().constructCollectionType(List.class, cls));
+        } catch (JsonProcessingException jEx) {
+            throw new RuntimeException(jEx);
+        }
     }
 
-    private <T> List<T> fromJsonArray(final ArrayNode json, Class<T> cls) throws JsonProcessingException {
-        return getObjectMapper().readValue(json.toString(),
-                getObjectMapper().getTypeFactory().constructCollectionType(List.class, cls));
+    private <T> List<T> fromJsonArray(final ArrayNode json, Class<T> cls) {
+        try {
+            return getObjectMapper().readValue(json.toString(),
+                    getObjectMapper().getTypeFactory().constructCollectionType(List.class, cls));
+        } catch (JsonProcessingException jEx) {
+            throw new RuntimeException(jEx);
+        }
     }
 
     private ArrayNode remapTable(final JSONObject response) {

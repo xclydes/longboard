@@ -1,0 +1,29 @@
+type PageInfo {
+    pageSize: Int!
+    currentPage: Int!
+    totalPages: Int!
+    totalCount: Int!
+}
+
+type AccessToken {
+    key: ID!,
+    secret: String
+}
+
+type RequestDetails {
+    key: ID!
+    secret: String
+    url: String!
+}
+
+type RecordType {
+    name: String!
+    value: String!
+}
+
+input TokenInput {
+    key: String!,
+    secret: String
+}
+
+

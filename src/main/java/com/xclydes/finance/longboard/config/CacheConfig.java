@@ -1,6 +1,7 @@
 package com.xclydes.finance.longboard.config;
 
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
@@ -8,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableCaching
-public class CacheConfig {
+public class CacheConfig extends CachingConfigurerSupport {
 
     public static final String WAVE_APICLIENT_GRAPHQL = "wave.api_client.graphql";
     public static final String WAVE_APICLIENT_REST = "wave.api_client.rest";
@@ -32,19 +33,25 @@ public class CacheConfig {
     public static final String UPWORK_USER = "upwork.user";
     public static final String UPWORK_TEAMS = "upwork.teams";
     public static final String UPWORK_COMPANY = "upwork.company";
-    public static final String UPWORK_EARNINGS = "upwork.earnings";
-    public static final String UPWORK_ACCOUNTING = "upwork.account.query";
-    public static final String UPWORK_ACCOUNTS = "upwork.account.list";
+    public static final String UPWORK_EARNINGS_USER = "upwork.earnings.user";
+    public static final String UPWORK_EARNINGS_FREELANCER_COMPANY = "upwork.earnings.freelancer.company";
+    public static final String UPWORK_EARNINGS_FREELANCER_TEAM = "upwork.earnings.freelancer.team";
+    public static final String UPWORK_EARNINGS_BUYER_TEAM = "upwork.earnings.buyer.team";
+    public static final String UPWORK_ACCOUNTING_ENTITY = "upwork.accounting.entity";
+    public static final String UPWORK_ACCOUNTING_USER = "upwork.accounting.user";
 
 
     @Bean
     public CacheManager cacheManager() {
         final ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
                 WAVE_APICLIENT_REST, WAVE_APICLIENT_GRAPHQL, WAVE_OAUTH_URL,
-                WAVE_COUNTRIES, WAVE_BUSINESS, WAVE_BUSINESSES, WAVE_INVOICE, WAVE_INVOICES, WAVE_ACCOUNT, WAVE_ACCOUNTS,
+                WAVE_COUNTRIES, WAVE_BUSINESS, WAVE_BUSINESSES, WAVE_INVOICE, WAVE_INVOICES,
+                WAVE_ACCOUNT, WAVE_ACCOUNTS,
                 WAVE_CUSTOMER, WAVE_CUSTOMERS, WAVE_PRODUCT, WAVE_PRODUCTS, WAVE_USER, WAVE_APIID,
                 UPWORK_APICLIENT, UPWORK_ACCESSTOKEN,
-                UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS, UPWORK_USER, UPWORK_ACCOUNTING, UPWORK_ACCOUNTS
+                UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS_USER, UPWORK_USER,
+                UPWORK_ACCOUNTING_ENTITY, UPWORK_ACCOUNTING_USER, UPWORK_EARNINGS_FREELANCER_COMPANY,
+                UPWORK_EARNINGS_FREELANCER_TEAM
         );
         // TODO Use redis if it is configured
         return cacheManager;

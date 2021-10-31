@@ -32,7 +32,7 @@ public class GraphQLConfig {
             // Get the actual list
             final List<HandlerMethodArgumentResolver> lst = (List<HandlerMethodArgumentResolver>) argumentResolversFld.get(composite);
             // Add our resolver at the beginning of the list
-            lst.add(0, tokenResolver);
+            lst.add(4, tokenResolver);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }

@@ -6,7 +6,10 @@ import com.xclydes.finance.longboard.upwork.UpworkSvc;
 import com.xclydes.finance.longboard.wave.WaveSvc;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.CorePublisher;
 import reactor.core.publisher.Mono;
 
@@ -43,7 +46,7 @@ public class AuthController {
     }
 
     @QueryMapping
-    public Mono<RequestToken> waveLogin(@Argument final String state) {
+    public CorePublisher<RequestToken> waveLogin(@Argument final String state) {
         return getWaveSvc().getLoginUrl(state);
     }
 
@@ -51,5 +54,10 @@ public class AuthController {
     @QueryMapping
     public CorePublisher<Token> waveAccessToken(@Argument final String verifier) {
         return getWaveSvc().getAccessToken(verifier);
+    }
+
+    @GetMapping("/auth/wave/callback")
+    public CorePublisher<ResponseEntity<String>> waveCallback(@RequestParam("code") String code) {
+        return Mono.just(ResponseEntity.ok("Your verifier is " + code));
     }
 }

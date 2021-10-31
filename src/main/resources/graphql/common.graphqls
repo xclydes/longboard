@@ -6,8 +6,10 @@ type PageInfo {
 }
 
 type AccessToken {
-    key: ID!,
+    key: ID!
     secret: String
+    refresh: String
+    expiry: Int
 }
 
 type RequestDetails {

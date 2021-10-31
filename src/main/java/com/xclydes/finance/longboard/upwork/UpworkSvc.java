@@ -1,4 +1,4 @@
-package com.xclydes.finance.longboard.svc;
+package com.xclydes.finance.longboard.upwork;
 
 import com.Upwork.api.OAuthClient;
 import com.Upwork.api.Routers.Organization.Companies;
@@ -6,7 +6,7 @@ import com.Upwork.api.Routers.Organization.Teams;
 import com.Upwork.api.Routers.Organization.Users;
 import com.Upwork.api.Routers.Reports.Finance.Accounts;
 import com.Upwork.api.Routers.Reports.Finance.Earnings;
-import com.Upwork.models.*;
+import com.xclydes.finance.longboard.upwork.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -78,6 +78,7 @@ public class UpworkSvc {
         final OAuthClient client = getClientProvider().getClient();
         final OAuthConsumer oAuthConsumer = client.getOAuthConsumer();
         final String url = client.getAuthorizationUrl( this.getCallbackUrl() );
+        // if the url is invalid
         return new RequestToken(oAuthConsumer.getToken(), oAuthConsumer.getTokenSecret(), url);
     }
 
@@ -103,18 +104,34 @@ public class UpworkSvc {
      * @return
      */
     @Cacheable(cacheNames = {UPWORK_USER})
-    public Optional<User> user(final Token token) {
-        try {
-            // Initialize the user function
-            final Users upworkUsersFn = new Users(getClientProvider().getClient(token));
-            final JSONObject myInfo = upworkUsersFn.getMyInfo();
-            final JSONObject userJson = myInfo.getJSONObject("user");
-            final User user = fromJson(userJson, User.class);
-            return Optional.ofNullable(user);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            return Optional.empty();
-        }
+    public Optional<User> user(final Token token, final String ref) {
+        // Initialize the user function
+        final Users upworkUsersFn = new Users(getClientProvider().getClient(token));
+        final User user = Optional.ofNullable(ref)
+                .filter(StringUtils::hasText)
+                .map(userRef -> {
+                    User found = null;
+                    try {
+                        final JSONObject myInfo = upworkUsersFn.getSpecific(userRef);
+                        final JSONObject userJson = myInfo.getJSONObject("user");
+                        found = fromJson(userJson, User.class);
+                    } catch (Exception e) {
+                        log.error(e.getMessage(), e);
+                    }
+                    return found;
+                })
+                .orElseGet(() -> {
+                    User found = null;
+                    try {
+                        final JSONObject myInfo = upworkUsersFn.getMyInfo();
+                        final JSONObject userJson = myInfo.getJSONObject("user");
+                        found = fromJson(userJson, User.class);
+                    } catch (Exception e) {
+                        log.error(e.getMessage(), e);
+                    }
+                    return found;
+                });
+        return Optional.ofNullable(user);
     }
 
     /**
@@ -182,7 +199,7 @@ public class UpworkSvc {
      * @return
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
-    public  List<Earning> earningsForUser(final Token token,
+    public List<Earning> earningsForUser(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
                                           final String ref
@@ -216,7 +233,7 @@ public class UpworkSvc {
      * @return
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_COMPANY})
-    public  List<Earning> earningsForFreelancerCompany(final Token token,
+    public List<Earning> earningsForFreelancerCompany(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
                                           final String ref
@@ -251,7 +268,7 @@ public class UpworkSvc {
      * @return
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM})
-    public  List<Earning> earningsForFreelancerTeam(final Token token,
+    public List<Earning> earningsForFreelancerTeam(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
                                           final String ref
@@ -286,7 +303,7 @@ public class UpworkSvc {
      * @return
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
-    public  List<Earning> earningsForBuyersTeam(final Token token,
+    public List<Earning> earningsForBuyersTeam(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
                                           final String ref
@@ -320,7 +337,7 @@ public class UpworkSvc {
      * @param ref
      * @return
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
     public  List<Earning> earningsForBuyersCompany(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
@@ -420,13 +437,16 @@ public class UpworkSvc {
     }
 
     /**
-     *
-     * @param token
-     * @param from
-     * @param to
-     * @param exec
-     * @return
-     * @throws Exception
+     * Performs a query to getch accounting related activites from Upwork.
+     * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
+     * @param token The user token to be used for authentication
+     * @param from The date from which to start the query
+     * @param to The date up to which the query should check
+     * @param exec The callback to perform the query execution and extract the appropriate result.
+     *             By result that means a typical report representation which can be mapped to a list of Accounting
+     *             records.
+     * @return The list of records found, if any.
+     * @throws Exception If any errors were encountered while processing the request.
      */
     private List<Accounting> performAccountingQuery(final Token token,
                                                     final LocalDate from,
@@ -445,13 +465,16 @@ public class UpworkSvc {
     }
 
     /**
-     *
-     * @param token
-     * @param from
-     * @param to
-     * @param exec
-     * @return
-     * @throws Exception
+     * Performs a query to fetch time related activities from Upwork.
+     * @see <a href="https://developers.upwork.com/?lang=node#reports_time-reports-fields">Time Reports</a>
+     * @param token The user token to be used for authentication
+     * @param from The date from which to start the query
+     * @param to The date up to which the query should check
+     * @param exec The callback to perform the query execution and extract the appropriate result.
+     *             By result that means a typical report representation which can be mapped to a list of Earning
+     *             records.
+     * @return The list of records found, if any.
+     * @throws Exception If any errors were encountered while processing the request.
      */
     private List<Earning> performEarningsQuery(final Token token,
                                                     final LocalDate from,
@@ -478,7 +501,7 @@ public class UpworkSvc {
         // Use the user provided, or the one the token belongs to
         final String resolvedUserReference = Optional.ofNullable(inputRef)
                 .filter(StringUtils::hasText)
-                .orElseGet(() -> user(token).map(user -> user.reference).orElse(null));
+                .orElseGet(() -> user(token, inputRef).map(user -> user.reference).orElse(null));
         // If a valid reference is not found
         if (!StringUtils.hasText(resolvedUserReference))
             throw new IllegalStateException("Unable to determine user reference");
@@ -568,5 +591,4 @@ public class UpworkSvc {
         }
         return earnings;
     }
-
 }

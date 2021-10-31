@@ -1,4 +1,4 @@
-package com.Upwork.models;
+package com.xclydes.finance.longboard.upwork.models;
 
 import java.io.Serializable;
 

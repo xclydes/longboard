@@ -33,6 +33,7 @@ public class SecurityConfig {
     @Bean
     SecurityWebFilterChain springWebFilterChain(final ServerHttpSecurity http) throws Exception {
         return http
+                .cors().and()
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 // Demonstrate that method security works
                 // Best practice to use both for defense in depth

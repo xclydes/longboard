@@ -17,8 +17,9 @@ public class Token implements Serializable {
 
     public final static Token EMPTY = Token.of("");
 
-    private String key;
-    private String secret;
+    private final String key;
+    private final String secret;
+    private final Integer expiry;
 
     public boolean hasKey() {
         return StringUtils.hasText(StringUtils.trimWhitespace(this.getKey()));
@@ -40,12 +41,18 @@ public class Token implements Serializable {
     @NotNull
     @Contract("_ -> new")
     public static Token of(final String key) {
-        return new Token(key, null);
+        return Token.of(key, null);
     }
 
     @NotNull
     @Contract("_, _ -> new")
     public static Token of(final String key, final String secret) {
-        return new Token(key, secret);
+        return Token.of(key, secret, null);
+    }
+
+    @NotNull
+    @Contract("_, _, _ -> new")
+    public static Token of(final String key, final String secret, final Integer expiry) {
+        return new Token(key, secret, expiry);
     }
 }

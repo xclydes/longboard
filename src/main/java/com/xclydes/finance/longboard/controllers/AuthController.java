@@ -2,8 +2,8 @@ package com.xclydes.finance.longboard.controllers;
 
 import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
-import com.xclydes.finance.longboard.svc.UpworkSvc;
-import com.xclydes.finance.longboard.svc.WaveSvc;
+import com.xclydes.finance.longboard.upwork.UpworkSvc;
+import com.xclydes.finance.longboard.wave.WaveSvc;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
@@ -42,9 +42,14 @@ public class AuthController {
         return Mono.just(getUpworkSvc().getAccessToken(token, verifier));
     }
 
-
     @QueryMapping
     public Mono<RequestToken> waveLogin(@Argument final String state) {
         return getWaveSvc().getLoginUrl(state);
+    }
+
+
+    @QueryMapping
+    public CorePublisher<Token> waveAccessToken(@Argument final String verifier) {
+        return getWaveSvc().getAccessToken(verifier);
     }
 }

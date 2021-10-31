@@ -1,8 +1,11 @@
-package com.xclydes.finance.longboard.svc;
+package com.xclydes.finance.longboard.wave;
 
+import com.Upwork.api.OAuthClient;
 import com.apollographql.apollo.ApolloClient;
 import com.apollographql.apollo.api.Input;
 import com.apollographql.apollo.exception.ApolloException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import com.xclydes.finance.longboard.models.FragmentPage;
 import com.xclydes.finance.longboard.models.Pagination;
@@ -22,9 +25,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
@@ -62,20 +69,26 @@ public class WaveSvc {
     private final IClientProvider<ApolloClient> clientProviderGQL;
     private final IClientProvider<WebClient> clientProviderRest;
     private final String loginUrl;
+    private final String tokenUrl;
     private final String clientId;
+    private final String clientSecret;
     private final List<String> scopes;
     private final String callback;
 
     public WaveSvc(@Qualifier("wave-graphql") final IClientProvider<ApolloClient> clientProviderGQL,
                    @Qualifier("wave-rest") final IClientProvider<WebClient> clientProviderRest,
-                   @Value("${longboard.wave.oauth.login}") final String LoginUrl,
+                   @Value("${longboard.wave.oauth.login}") final String loginUrl,
+                   @Value("${longboard.wave.oauth.token}") final String tokenUrl,
                    @Value("${longboard.wave.client.key}") final String clientId,
+                   @Value("${longboard.wave.client.secret}") final String clientSecret,
                    @Value("${longboard.wave.oauth.scopes}") final List<String> scopes,
                    @Value("${longboard.wave.oauth.callback}") final String callback) {
         this.clientProviderGQL = clientProviderGQL;
         this.clientProviderRest = clientProviderRest;
-        this.loginUrl = LoginUrl;
+        this.loginUrl = loginUrl;
+        this.tokenUrl = tokenUrl;
         this.clientId = clientId;
+        this.clientSecret = clientSecret;
         this.scopes = scopes;
         this.callback = callback;
     }
@@ -90,25 +103,67 @@ public class WaveSvc {
         return getClientProviderGQL().getClient(token);
     }
 
+    /**
+     * Gets the login URL the user should to gain authorization from Wave
+     * @param state The state code to be used for the request
+     * @return The request token details
+     */
     @Cacheable(cacheNames = {WAVE_OAUTH_URL})
     public Mono<RequestToken> getLoginUrl(final String state) {
         final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder
-                .fromHttpUrl(loginUrl)
+                .fromHttpUrl(this.getLoginUrl())
                 .queryParam("response_type", "code")
                 // Add the state attribute
                 .queryParam("state", state)
                 // Add the client ID
-                .queryParam("client_id", clientId)
+                .queryParam("client_id", this.getClientId())
                 // Add the scopes
-                .queryParam("scope", String.join(" ", scopes));
+                .queryParam("scope", String.join(" ", this.getScopes()));
         // If a callback is set
-        if (StringUtils.hasText(callback)) {
+        if (StringUtils.hasText(this.getCallback())) {
             // Add the callback URL
-            uriComponentsBuilder.queryParam("redirect_uri", callback);
+            uriComponentsBuilder.queryParam("redirect_uri", this.getCallback());
         }
         // return the built URL
         return Mono.just(new RequestToken(state, null, uriComponentsBuilder.toUriString()));
     }
+
+
+    /**
+     * Exchanges the request token and verifier supplied for an access token
+     * @param verifier The verifier to submit
+     * @return The access token returned
+     */
+    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
+    public Mono<Token> getAccessToken(final String verifier) {
+        // Get the client
+        final WebClient restClient = this.getClientProviderRest().getClient();
+
+        // Build the request body
+        final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();
+        bodyValues.add("client_id", this.getClientId());
+        bodyValues.add("client_secret", this.getClientSecret());
+        bodyValues.add("grant_type", "authorization_code");
+        bodyValues.add("redirect_uri", StringUtils.trimWhitespace(this.getCallback()));
+        bodyValues.add("code", verifier);
+
+        // Post the oauth2/token/ endpoint
+        return restClient.post()
+            .uri("oauth2/token/")
+            .accept(MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .body(BodyInserters.fromFormData(bodyValues))
+            .retrieve()
+            .bodyToMono(ObjectNode.class)
+            .map( jsonNode -> {
+                return Token.of(
+                    jsonNode.required("access_token").asText(),
+                    jsonNode.required("refresh_token").asText(),
+                    jsonNode.required("expires_in").asInt()
+                );
+            });
+    }
+
 
     /**
      * Decodes and parses the ID given into its constituent parts
@@ -208,8 +263,8 @@ public class WaveSvc {
             // Otherwise, process the response
             return Optional.ofNullable(dataResponse.getData())
                     .map(GetBusinessQuery.Data::business)
-                    .map(business -> business.fragments())
-                    .map(fragments -> fragments.businessFragment());
+                    .map(GetBusinessQuery.Business::fragments)
+                    .map(GetBusinessQuery.Business.Fragments::businessFragment);
         });
     }
 

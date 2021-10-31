@@ -49,6 +49,51 @@
       "name": "longboard.upwork.client.callback",
       "type": "java.lang.String",
       "description": "The callback URL to be supplied to the UpWork OAuth API, if any."
+    },
+    {
+      "name": "longboard.cors.order",
+      "type": "java.lang.Integer",
+      "description": "The filter order to be applied to the CorsFilter."
+    },
+    {
+      "name": "longboard.cors.max-age",
+      "type": "java.lang.Integer",
+      "description": "The CORS max-age value to be set."
+    },
+    {
+      "name": "longboard.cors.headers",
+      "type": "java.lang.String",
+      "description": "The comma separated list of allowed CORS headers."
+    },
+    {
+      "name": "longboard.cors.origins",
+      "type": "java.lang.String",
+      "description": "The comma separated list of allowed CORS origins."
+    },
+    {
+      "name": "longboard.cors.methods",
+      "type": "java.lang.String",
+      "description": "The comma separated list of allowed CORS methods methods."
+    },
+    {
+      "name": "longboard.wave.oauth.login",
+      "type": "java.lang.String",
+      "description": "The OAuth endpoint to be used when requesting an authorization code from Wave."
+    },
+    {
+      "name": "longboard.wave.oauth.scopes",
+      "type": "java.lang.String",
+      "description": "A comma separated list of OAuth scopes to request from Wave."
+    },
+    {
+      "name": "longboard.wave.oauth.callback",
+      "type": "java.lang.String",
+      "description": "The OAuth callback to submitted to Wave when requesting authorization."
+    },
+    {
+      "name": "longboard.wave.oauth.token",
+      "type": "java.lang.String",
+      "description": "The OAuth endpoint to be used when requesting an access token from Wave."
     }
   ]
 }

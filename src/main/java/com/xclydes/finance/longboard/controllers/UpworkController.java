@@ -1,10 +1,10 @@
 package com.xclydes.finance.longboard.controllers;
 
 import com.Upwork.api.OAuthClient;
-import com.Upwork.models.*;
+import com.xclydes.finance.longboard.upwork.models.*;
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import com.xclydes.finance.longboard.models.Token;
-import com.xclydes.finance.longboard.svc.UpworkSvc;
+import com.xclydes.finance.longboard.upwork.UpworkSvc;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -32,9 +32,10 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<User> upworkUser(@Argument final Token token) {
+    public Mono<User> upworkUser(@Argument final Token token, @Argument String ref) {
         return wrapLogic(sink -> {
-            getUpworkSvc().user(token)
+            getUpworkSvc()
+                .user(token, ref)
                 .ifPresentOrElse(
                     sink::success,
                     () -> sink.error(new ResponseStatusException(HttpStatus.NOT_FOUND))

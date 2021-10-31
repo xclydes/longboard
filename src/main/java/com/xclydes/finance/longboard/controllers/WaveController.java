@@ -2,7 +2,7 @@ package com.xclydes.finance.longboard.controllers;
 
 import com.apollographql.apollo.ApolloClient;
 import com.xclydes.finance.longboard.models.FragmentPage;
-import com.xclydes.finance.longboard.svc.WaveSvc;
+import com.xclydes.finance.longboard.wave.WaveSvc;
 import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;

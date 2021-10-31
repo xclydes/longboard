@@ -13,6 +13,7 @@ public class CacheConfig extends CachingConfigurerSupport {
 
     public static final String WAVE_APICLIENT_GRAPHQL = "wave.api_client.graphql";
     public static final String WAVE_APICLIENT_REST = "wave.api_client.rest";
+    public static final String WAVE_ACCESSTOKEN = "wave.token.access";
     public static final String WAVE_OAUTH_URL = "wave.oauth.url";
     public static final String WAVE_APIID = "wave.api_id";
     public static final String WAVE_COUNTRIES = "wave.countries";
@@ -37,6 +38,7 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_EARNINGS_FREELANCER_COMPANY = "upwork.earnings.freelancer.company";
     public static final String UPWORK_EARNINGS_FREELANCER_TEAM = "upwork.earnings.freelancer.team";
     public static final String UPWORK_EARNINGS_BUYER_TEAM = "upwork.earnings.buyer.team";
+    public static final String UPWORK_EARNINGS_BUYER_COMPANY = "upwork.earnings.buyer.company";
     public static final String UPWORK_ACCOUNTING_ENTITY = "upwork.accounting.entity";
     public static final String UPWORK_ACCOUNTING_USER = "upwork.accounting.user";
 
@@ -46,10 +48,11 @@ public class CacheConfig extends CachingConfigurerSupport {
         final ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
                 WAVE_APICLIENT_REST, WAVE_APICLIENT_GRAPHQL, WAVE_OAUTH_URL,
                 WAVE_COUNTRIES, WAVE_BUSINESS, WAVE_BUSINESSES, WAVE_INVOICE, WAVE_INVOICES,
-                WAVE_ACCOUNT, WAVE_ACCOUNTS,
+                WAVE_ACCOUNT, WAVE_ACCOUNTS, WAVE_ACCESSTOKEN,
                 WAVE_CUSTOMER, WAVE_CUSTOMERS, WAVE_PRODUCT, WAVE_PRODUCTS, WAVE_USER, WAVE_APIID,
                 UPWORK_APICLIENT, UPWORK_ACCESSTOKEN,
                 UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS_USER, UPWORK_USER,
+                UPWORK_EARNINGS_BUYER_TEAM, UPWORK_EARNINGS_BUYER_COMPANY,
                 UPWORK_ACCOUNTING_ENTITY, UPWORK_ACCOUNTING_USER, UPWORK_EARNINGS_FREELANCER_COMPANY,
                 UPWORK_EARNINGS_FREELANCER_TEAM
         );

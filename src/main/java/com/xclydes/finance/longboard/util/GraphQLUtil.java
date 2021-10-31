@@ -94,6 +94,7 @@ public class GraphQLUtil {
                     }
                 }
             });
-        }).onErrorStop();
+        })
+        .onErrorStop();
     }
 }

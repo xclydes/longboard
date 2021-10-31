@@ -1,10 +1,10 @@
 package com.xclydes.finance.longboard.controllers;
 
 import com.Upwork.api.OAuthClient;
-import com.xclydes.finance.longboard.upwork.models.*;
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.upwork.UpworkSvc;
+import com.xclydes.finance.longboard.upwork.models.*;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -32,33 +32,31 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<User> upworkUser(@Argument final Token token, @Argument String ref) {
-        return wrapLogic(sink -> {
-            getUpworkSvc()
-                .user(token, ref)
-                .ifPresentOrElse(
-                    sink::success,
-                    () -> sink.error(new ResponseStatusException(HttpStatus.NOT_FOUND))
-                );
-        });
+    public Mono<User> upworkUser(final Token token, @Argument String ref) {
+        return wrapLogic(sink -> getUpworkSvc()
+            .user(token, ref)
+            .ifPresentOrElse(
+                sink::success,
+                () -> sink.error(new ResponseStatusException(HttpStatus.NOT_FOUND))
+            ));
     }
 
     @QueryMapping
-    public Mono<List<Company>> upworkCompanies(@Argument final Token token,
+    public Mono<List<Company>> upworkCompanies(final Token token,
                                                @Argument String ref) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
                         .companies(token, ref)));
     }
 
     @QueryMapping
-    public Mono<List<Team>> upworkTeams(@Argument final Token token,
+    public Mono<List<Team>> upworkTeams(final Token token,
                                         @Argument String ref) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
                 .teams(token, ref)));
     }
 
     @QueryMapping
-    public Mono<List<Earning>> upworkUserEarnings(@Argument final Token token,
+    public Mono<List<Earning>> upworkUserEarnings(final Token token,
                                                   @Argument final String from,
                                                   @Argument final String to
                                           ) {
@@ -75,7 +73,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<List<Accounting>> upworkEntityAccounting(@Argument final Token token,
+    public Mono<List<Accounting>> upworkEntityAccounting(final Token token,
                                                  @Argument final String ref,
                                                  @Argument final String from,
                                                  @Argument final String to
@@ -93,7 +91,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<List<Accounting>> upworkUserAccounting(@Argument final Token token,
+    public Mono<List<Accounting>> upworkUserAccounting(final Token token,
                                                  @Argument final String ref,
                                                  @Argument final String from,
                                                  @Argument final String to

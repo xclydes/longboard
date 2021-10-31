@@ -4,18 +4,19 @@ type Query {
     # Upwork
     upworkLogin: RequestDetails,
     upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
-    upworkUser(token: TokenInput!, ref: String): UpworkUser
-    upworkCompanies(token: TokenInput!, ref: String): [UpworkCompany]
-    upworkTeams(token: TokenInput!, ref: String): [UpworkTeam]
-    upworkUserEarnings(token: TokenInput!, from: String, to: String): [UpworkEarning]
+    upworkUser(ref: String): UpworkUser
+    upworkCompanies(ref: String): [UpworkCompany]
+    upworkTeams(ref: String): [UpworkTeam]
+    upworkUserEarnings(from: String, to: String): [UpworkEarning]
 
-    upworkEntityAccounting(token: TokenInput!, ref: String!, from: String, to: String): [UpworkAccounting]
-    upworkUserAccounting(token: TokenInput!, ref: String, from: String, to: String): [UpworkAccounting]
+    upworkEntityAccounting(ref: String!, from: String, to: String): [UpworkAccounting]
+    upworkUserAccounting(ref: String, from: String, to: String): [UpworkAccounting]
 
 
     # Wave
     waveLogin(state: String!): RequestDetails
-    waveAccessToken(verifier: String!): RequestDetails
+    waveAccessToken(verifier: String!): AccessToken
+    waveUser: WaveUser
     waveBusiness(id: ID!): WaveBusiness
     waveBusinesses(page: Int, pageSize: Int): [BusinessPage]
 }

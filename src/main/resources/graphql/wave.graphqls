@@ -1,3 +1,7 @@
+type WaveUser {
+    id: String!,
+    defaultEmail: String!,
+}
 type WaveBusiness {
     id: ID!
     name: String!

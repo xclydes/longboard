@@ -8,7 +8,7 @@ type Query {
     upworkTeamUsers(ref: String!): [UpworkUser]
     upworkCompanies(ref: String): [UpworkCompany]
     upworkCompanyTeams(companyRef: String!): [UpworkTeam]
-    upworkCompanyDiary(companyOrTeamID: String!, date: String): [UpworkCompany]
+    upworkCompanyDiary(companyOrTeamID: String!, from: String!, to: String): [UpworkSnapshot]
     upworkTeams(ref: String): [UpworkTeam]
     upworkUserEarnings(from: String, to: String, ref: String): [UpworkTimeRecord]
     upworkTeamTime(from: String, to: String, companyRef: String!, teamRef: String!): [UpworkTimeRecord]

@@ -242,21 +242,23 @@ public class UpworkSvc {
         }
     }
 
-    public List<Object> workDiaryForCompany(final Token token,
-                                            final LocalDate date,
-                                            final String teamOrCompanyID) {
+    public List<DiaryRecord> workDiaryForCompany(final Token token,
+                                                 final LocalDate date,
+                                                 final String teamOrCompanyID) {
         // If a valid reference is not found
         final String resolvedEntityID = ValidationUtil.requires(teamOrCompanyID,
                 StringUtils::hasText, "A valid freelancer/company ID is required");
         try {
             final Workdiary workDiaryRoute = new Workdiary(getClientProvider().getClient(token));
             final HashMap<String, String> params = new HashMap<>();
-            final JSONObject teamsListResponse = workDiaryRoute.get(resolvedEntityID,
+            //log.debug(String.format("Fetching work diary for %s on %s", resolvedEntityID, date));
+            final JSONObject workDiaryResponse = workDiaryRoute.get(resolvedEntityID,
                     dateFormatReport.format(date), params);
             // Check for errors
-            checkForException(teamsListResponse);
-            final JSONArray teamsJson = teamsListResponse.getJSONArray("teams");
-            return fromJsonArray(teamsJson, Object.class);
+            checkForException(workDiaryResponse);
+            final JSONObject snapshotDataJson = workDiaryResponse.getJSONObject("data");
+            final JSONArray snapshotsJson = snapshotDataJson.getJSONArray("snapshots");
+            return fromJsonArray(snapshotsJson, DiaryRecord.class);
         } catch (JSONException e) {
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);

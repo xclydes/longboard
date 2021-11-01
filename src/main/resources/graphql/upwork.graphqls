@@ -53,11 +53,69 @@ type UpworkFinanceRecord {
     type: String!
     subtype: String!
     accounting_entity__reference: String
+    accounting_entity_name: String
+    buyer_company__reference: String
+    buyer_company__id: String
+    buyer_company_name: String
     buyer_team__reference: String
+    buyer_team__id: String
+    buyer_team_name: String
+    provider_company__reference: String
+    provider_company__id: String
+    provider_company_name: String
+    provider_team__reference: String
+    provider_team__id: String
+    provider_team_name: String
+    provider__reference: String
+    provider__id: String
+    provider_name: String
     date: String!
     amount: String
     description: String
     date_due: String
+    assignment__reference: String
+    assignment_name: String
+    comment: String
+    memo: String
+    notes: String
+    po_number: String
 }
-
+type UpworkScreenshot {
+    activity: Int!
+    screenshot_img_med: String
+    screenshot_img: String
+    screenshot_img_thmb: String
+    has_webcam: String
+    webcam_img_thmb: String
+    webcam_img: String
+    has_screenshot: String
+    webcam_url: String
+    screenshot_url: String
+    screenshot_img_lrg: String
+}
+type UpworkSnapshotTask {
+    code: String
+    description: String
+    memo: String
+    id: String
+}
+type UpworkSnapshotTime {
+    last_worked_int: Int
+    tracked_time: Int
+    manual_time: Int
+    overtime: Int
+    first_worked: String
+    last_worked: String
+    first_worked_int: Int
+    last_screenshot: Int
+}
+type UpworkSnapshot {
+    contract_id: String!
+    user_id: String!
+    duration: String!
+    duration_int: Int!
+    time: UpworkSnapshotTime
+    task: UpworkSnapshotTask
+    screenshots: [UpworkScreenshot]
+}
 

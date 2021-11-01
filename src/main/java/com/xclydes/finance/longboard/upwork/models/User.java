@@ -14,6 +14,7 @@ public class User implements Serializable {
     public String is_provider;
     public String first_name;
     public String profile_key;
+    public String has_contract;
 }
 
 

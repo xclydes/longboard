@@ -5,7 +5,10 @@ import com.Upwork.api.Routers.Organization.Companies;
 import com.Upwork.api.Routers.Organization.Teams;
 import com.Upwork.api.Routers.Organization.Users;
 import com.Upwork.api.Routers.Reports.Finance.Accounts;
+import com.Upwork.api.Routers.Reports.Finance.Billings;
 import com.Upwork.api.Routers.Reports.Finance.Earnings;
+import com.Upwork.api.Routers.Reports.Time;
+import com.Upwork.api.Routers.Workdiary;
 import com.xclydes.finance.longboard.upwork.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -77,14 +80,15 @@ public class UpworkSvc {
         // Get the url
         final OAuthClient client = getClientProvider().getClient();
         final OAuthConsumer oAuthConsumer = client.getOAuthConsumer();
-        final String url = client.getAuthorizationUrl( this.getCallbackUrl() );
+        final String url = client.getAuthorizationUrl(this.getCallbackUrl());
         // if the url is invalid
         return new RequestToken(oAuthConsumer.getToken(), oAuthConsumer.getTokenSecret(), url);
     }
 
     /**
      * Exchanges the request token and verifier supplied for an access token
-     * @param token The request token to submit
+     *
+     * @param token    The request token to submit
      * @param verifier The verifier to submit
      * @return The access token returned
      */
@@ -99,9 +103,10 @@ public class UpworkSvc {
     }
 
     /**
+     * Gets the details of the current user or one with the ref given if any
      *
-     * @param token
-     * @return
+     * @param token The access token to be used
+     * @return The user requested, if found
      */
     @Cacheable(cacheNames = {UPWORK_USER})
     public Optional<User> user(final Token token, final String ref) {
@@ -110,270 +115,451 @@ public class UpworkSvc {
         final User user = Optional.ofNullable(ref)
                 .filter(StringUtils::hasText)
                 .map(userRef -> {
-                    User found = null;
                     try {
-                        final JSONObject myInfo = upworkUsersFn.getSpecific(userRef);
-                        final JSONObject userJson = myInfo.getJSONObject("user");
-                        found = fromJson(userJson, User.class);
-                    } catch (Exception e) {
+                        final JSONObject userInfoResponse = upworkUsersFn.getSpecific(userRef);
+                        // Check for errors
+                        checkForException(userInfoResponse);
+                        final JSONObject userJson = userInfoResponse.getJSONObject("user");
+                        return fromJson(userJson, User.class);
+                    } catch (JSONException e) {
                         log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
                     }
-                    return found;
                 })
                 .orElseGet(() -> {
-                    User found = null;
                     try {
-                        final JSONObject myInfo = upworkUsersFn.getMyInfo();
-                        final JSONObject userJson = myInfo.getJSONObject("user");
-                        found = fromJson(userJson, User.class);
-                    } catch (Exception e) {
+                        final JSONObject myInfoResponse = upworkUsersFn.getMyInfo();
+                        // Check for errors
+                        checkForException(myInfoResponse);
+                        final JSONObject userJson = myInfoResponse.getJSONObject("user");
+                        return fromJson(userJson, User.class);
+                    } catch (JSONException e) {
                         log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
                     }
-                    return found;
                 });
         return Optional.ofNullable(user);
     }
 
     /**
+     * Gets the list of or a specific team
      *
-     * @param token
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param ref   The team reference to be used, if any.
+     * @return The list of users on the specific team
      */
-    //@Cacheable(cacheNames = {UPWORK_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_USER_BY_TEAM})
+    public List<User> usersInTeam(final Token token, final String ref) {
+        try {
+            final Teams teams = new Teams(getClientProvider().getClient(token));
+            final JSONObject teamsListResponse = teams.getUsersInTeam(ref);
+            // Check for errors
+            checkForException(teamsListResponse);
+            final JSONArray teamsJson = teamsListResponse.getJSONArray("users");
+            return fromJsonArray(teamsJson, User.class);
+        } catch (JSONException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Gets the list of companies or a specific company
+     *
+     * @param token The access token to be used
+     * @param ref   The company reference to filter for
+     * @return The list of companies or specific company
+     */
+    @Cacheable(cacheNames = {UPWORK_COMPANY})
     public List<Company> companies(final Token token, final String ref) {
         // Initialize the Upwork wrapper
         final Companies companies = new Companies(getClientProvider().getClient(token));
         // Process the inputs
         return Optional.ofNullable(ref)
-            .filter(StringUtils::hasText)
-            .map(companyRef -> {
-                List<Company> companyLst = Collections.emptyList();
-                try {
-                    final JSONObject companiesList = companies.getSpecific(ref);
-                    final JSONObject companiesJson = companiesList.getJSONObject("company");
-                    companyLst = Collections.singletonList(fromJson(companiesJson, Company.class));
-                } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                }
-                return companyLst;
-            })
-            .orElseGet(() -> {
-                List<Company> companyLst = Collections.emptyList();
-                try {
-                    final JSONObject companiesList = companies.getList();
-                    final JSONArray companiesJson = companiesList.getJSONArray("companies");
-                    companyLst = fromJsonArray(companiesJson, Company.class);
-                } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                }
-                return companyLst;
-            });
+                .filter(StringUtils::hasText)
+                .map(companyRef -> {
+                    try {
+                        final JSONObject companiesListResponse = companies.getSpecific(ref);
+                        // Check for errors
+                        checkForException(companiesListResponse);
+                        final JSONObject companiesJson = companiesListResponse.getJSONObject("company");
+                        return Collections.singletonList(fromJson(companiesJson, Company.class));
+                    } catch (JSONException e) {
+                        log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                })
+                .orElseGet(() -> {
+                    try {
+                        final JSONObject companiesListResponse = companies.getList();
+                        // Check for errors
+                        checkForException(companiesListResponse);
+                        final JSONArray companiesJson = companiesListResponse.getJSONArray("companies");
+                        return fromJsonArray(companiesJson, Company.class);
+                    } catch (JSONException e) {
+                        log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                });
     }
 
     /**
+     * Gets the list of or a specific team
      *
-     * @param token
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @return The list of all teams or the specific team
      */
     @Cacheable(cacheNames = {UPWORK_TEAMS})
-    public List<Team> teams(final Token token, final String ref) {
+    public List<Team> teams(final Token token) {
         try {
             final Teams teams = new Teams(getClientProvider().getClient(token));
-            final JSONObject teamsList = teams.getList();
-            final JSONArray teamsJson = teamsList.getJSONArray("teams");
+            final JSONObject teamsListResponse = teams.getList();
+            // Check for errors
+            checkForException(teamsListResponse);
+            final JSONArray teamsJson = teamsListResponse.getJSONArray("teams");
             return fromJsonArray(teamsJson, Team.class);
-        } catch (Exception e) {
+        } catch (JSONException e) {
             log.error(e.getMessage(), e);
-            return Collections.emptyList();
+            throw new RuntimeException(e);
+        }
+    }
+
+//    @Cacheable(cacheNames = {UPWORK_TEAMS})
+    public List<Team> companyTeams(final Token token, final String companyRef) {
+        // If a valid reference is not found
+        final String resolvedEntityRef = ValidationUtil.requires(companyRef,
+                StringUtils::hasText, "A valid company reference is required");
+        try {
+            final Companies companiesRoute = new Companies(getClientProvider().getClient(token));
+            final JSONObject teamsListResponse = companiesRoute.getTeams(resolvedEntityRef);
+            // Check for errors
+            checkForException(teamsListResponse);
+            final JSONArray teamsJson = teamsListResponse.getJSONArray("teams");
+            return fromJsonArray(teamsJson, Team.class);
+        } catch (JSONException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<Object> workDiaryForCompany(final Token token,
+                                            final LocalDate date,
+                                            final String teamOrCompanyID) {
+        // If a valid reference is not found
+        final String resolvedEntityID = ValidationUtil.requires(teamOrCompanyID,
+                StringUtils::hasText, "A valid freelancer/company ID is required");
+        try {
+            final Workdiary workDiaryRoute = new Workdiary(getClientProvider().getClient(token));
+            final HashMap<String, String> params = new HashMap<>();
+            final JSONObject teamsListResponse = workDiaryRoute.get(resolvedEntityID,
+                    dateFormatReport.format(date), params);
+            // Check for errors
+            checkForException(teamsListResponse);
+            final JSONArray teamsJson = teamsListResponse.getJSONArray("teams");
+            return fromJsonArray(teamsJson, Object.class);
+        } catch (JSONException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 
     /**
+     * Gets Earning records for a specific freelancer/user
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference for the freelancer
+     * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
-    public List<Earning> earningsForUser(final Token token,
-                                          final LocalDate from,
-                                          final LocalDate to,
-                                          final String ref
+    public List<TimeRecord> earningsForUser(final Token token,
+                                            final LocalDate from,
+                                            final LocalDate to,
+                                            final String ref
     ) {
         // Use the user provided, or the one the token belongs to
         final String resolvedRef = resolveUserReference(token, ref);
-        List<Earning> earningList = Collections.emptyList();
-        try {
-            earningList = performEarningsQuery(
-                token, from, to,
-                (earnings, params) -> {
+        return performTimeQuery(
+                from, to, null,
+                (params) -> {
                     try {
-                        return earnings.getByFreelancer(resolvedRef, params);
+                        return getEarningsRoute(token).getByFreelancer(resolvedRef, params);
                     } catch (JSONException e) {
                         throw new RuntimeException(e);
                     }
                 }
-            );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return earningList;
+        );
     }
 
     /**
+     * Gets Billing records for a specific freelancer/user
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference for the freelancer
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
+    public List<FinanceRecord> billiingsForUser(final Token token,
+                                            final LocalDate from,
+                                            final LocalDate to,
+                                            final String ref
+    ) {
+        // Use the user provided, or the one the token belongs to
+        final String resolvedRef = resolveUserReference(token, ref);
+        return performFinancialQuery(
+                from, to,
+                // Disallowed fields: `comment`, `po_number`. Supported filters: `date`, `week`, `month`, `year`, `date_due`, `buyer_company__reference`, `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`, `provider_company__reference`, `provider_company__id`, `assignment__reference`, `type`, `subtype`. Permissions: Exclusive Agency Member
+                null,
+                (params) -> {
+                    try {
+                        return getBillingsRoute(token).getByFreelancer(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+        );
+    }
+
+    /**
+     * Gets Earning records for a specific freelancer company
+     *
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the team
+     * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_COMPANY})
-    public List<Earning> earningsForFreelancerCompany(final Token token,
-                                          final LocalDate from,
-                                          final LocalDate to,
-                                          final String ref
+    public List<TimeRecord> earningsForFreelancerCompany(final Token token,
+                                                         final LocalDate from,
+                                                         final LocalDate to,
+                                                         final String ref
     ) {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid freelancer/company reference is required");
-        List<Earning> earningList = Collections.emptyList();
-        try {
-            earningList = performEarningsQuery(
-                token, from, to,
-                (earnings, params) -> {
+        return performTimeQuery(
+                from, to, null,
+                (params) -> {
                     try {
-                        return earnings.getByFreelancersCompany(resolvedRef, params);
+                        return getBillingsRoute(token).getByFreelancersCompany(resolvedRef, params);
                     } catch (JSONException e) {
                         throw new RuntimeException(e);
                     }
                 }
-            );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return earningList;
+        );
     }
 
     /**
+     * Gets Earning records for a specific freelancer team
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the team
+     * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM})
-    public List<Earning> earningsForFreelancerTeam(final Token token,
-                                          final LocalDate from,
-                                          final LocalDate to,
-                                          final String ref
+    public List<TimeRecord> earningsForFreelancerTeam(final Token token,
+                                                      final LocalDate from,
+                                                      final LocalDate to,
+                                                      final String ref
     ) {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid freelancer/team reference is required");
-        List<Earning> earningList = Collections.emptyList();
-        try {
-            earningList = performEarningsQuery(
-                token, from, to,
-                (earnings, params) -> {
+        return performTimeQuery(
+                from, to, null,
+                (params) -> {
                     try {
-                        return earnings.getByFreelancersTeam(resolvedRef, params);
+                        return getEarningsRoute(token).getByFreelancersTeam(resolvedRef, params);
                     } catch (JSONException e) {
                         throw new RuntimeException(e);
                     }
                 }
-            );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return earningList;
+        );
     }
 
     /**
+     * Gets Earning records for a specific client team
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the team
+     * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
-    public List<Earning> earningsForBuyersTeam(final Token token,
-                                          final LocalDate from,
-                                          final LocalDate to,
-                                          final String ref
+    public List<TimeRecord> earningsForBuyersTeam(final Token token,
+                                                  final LocalDate from,
+                                                  final LocalDate to,
+                                                  final String ref
     ) {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid buyers/team reference is required");
-        List<Earning> earningList = Collections.emptyList();
-        try {
-            earningList = performEarningsQuery(
-                token, from, to,
-                (earnings, params) -> {
-                    try {
-                        return earnings.getByBuyersTeam(resolvedRef, params);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
+        return performTimeQuery(
+                    from, to, null,
+                    (params) -> {
+                        try {
+                            return getEarningsRoute(token).getByBuyersTeam(resolvedRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-                }
             );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return earningList;
     }
 
     /**
+     * Gets earning records related to a specific client company
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the company to be queried
+     * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
-    public  List<Earning> earningsForBuyersCompany(final Token token,
-                                          final LocalDate from,
-                                          final LocalDate to,
-                                          final String ref
+    public List<TimeRecord> earningsForBuyersCompany(final Token token,
+                                                     final LocalDate from,
+                                                     final LocalDate to,
+                                                     final String ref
     ) {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid buyers/company reference is required");
-        List<Earning> earningList = Collections.emptyList();
-        try {
-            earningList = performEarningsQuery(
-                token, from, to,
-                (earnings, params) -> {
-                    try {
-                        return earnings.getByBuyersCompany(resolvedRef, params);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
+        return performTimeQuery(
+                    from, to, null,
+                    (params) -> {
+                        try {
+                            return getEarningsRoute(token).getByBuyersCompany(resolvedRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-                }
             );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return earningList;
     }
 
     /**
+     * Gets earning records related to a specific client company
+     *Fields that cannot appear in the query: `team_id`, `team_name`.
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param companyRef   The reference of the company to be queried
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    public List<TimeRecord> timeByCompany(final Token token,
+                                         final LocalDate from,
+                                         final LocalDate to,
+                                         final String companyRef
+    ) {
+        // If a valid reference is not found
+        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        return performTimeQuery(
+                    from, to,
+                    // Fields that cannot appear in the query: `company_id`
+        null,
+                    (params) -> {
+                        try {
+                            return getTimeRoute(token).getByCompany(resolvedCompanyRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets earning records related to a specific client company
+     *Fields that cannot appear in the query: `team_id`, `team_name`.
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param companyRef   The reference of the company to be queried
+     * @param agencyRef   The reference of the agency to be queried
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    public List<TimeRecord> timeByAgency(final Token token,
+                                         final LocalDate from,
+                                         final LocalDate to,
+                                         final String companyRef,
+                                         final String agencyRef
+    ) {
+        // If a valid reference is not found
+        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        // If a valid reference is not found
+        final String resolvedAgencyRef = ValidationUtil.requires(agencyRef,
+                StringUtils::hasText, "A valid agency reference is required");
+        return performTimeQuery(
+                    from, to,
+                    // Fields that cannot appear in the query: `agency_id`, `agency_name`,
+                    // `charges`, `charges_online`, `charges_offline`.
+        null,
+                    (params) -> {
+                        try {
+                            return getTimeRoute(token).getByAgency(resolvedCompanyRef, agencyRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets earning records related to a specific client company
+     *Fields that cannot appear in the query: `team_id`, `team_name`.
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param companyRef   The reference of the company to be queried
+     * @param teamRef   The reference of the team to be queried
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    public List<TimeRecord> timeByTeam(final Token token,
+                                         final LocalDate from,
+                                         final LocalDate to,
+                                         final String companyRef,
+                                         final String teamRef
+    ) {
+        // If a valid reference is not found
+        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        final String resolvedTeamRef = ValidationUtil.requires(teamRef,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        return performTimeQuery(
+                    from, to,
+                    // Fields that cannot appear in the query: `team_id`, `team_name`
+        null,
+                    (params) -> {
+                        try {
+                            return getTimeRoute(token).getByTeamFull(resolvedCompanyRef, resolvedTeamRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets accounting records for a specific entity
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param ref
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the entity to be queried
+     * @return The list of account records found
      */
     @Cacheable(cacheNames = {UPWORK_ACCOUNTING_ENTITY})
-    public List<Accounting> accountsForEntity(final Token token,
+    public List<FinanceRecord> accountsForEntity(final Token token,
                                               final LocalDate from,
                                               final LocalDate to,
                                               final String ref
@@ -381,121 +567,144 @@ public class UpworkSvc {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid account reference is required");
-        List<Accounting> accountingList = Collections.emptyList();
-        try {
-            accountingList = performAccountingQuery(
-                    token,
-                    from,
-                    to,
-                    (accounts, params) -> {
-                        try {
-                            return accounts.getSpecific(resolvedRef, params);
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
+        return performFinancialQuery(
+                from,
+                to,
+                null,
+                (params) -> {
+                    try {
+                        return getAccountsRoute(token).getSpecific(resolvedRef, params);
+                    } catch (JSONException e) {
+                        throw new RuntimeException(e);
                     }
+                }
             );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return accountingList;
     }
 
     /**
+     * Gets accounting records for a specific or the current user
      *
-     * @param token
-     * @param from
-     * @param to
-     * @param userReference
-     * @return
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param ref   The reference of the user to be queried. Assumes the current user if null.
+     * @return The list of account records found
      */
     @Cacheable(cacheNames = {UPWORK_ACCOUNTING_USER})
-    public List<Accounting> accountsForUser(final Token token,
-                                     final LocalDate from,
-                                     final LocalDate to,
-                                     final String userReference) {
+    public List<FinanceRecord> accountsForUser(final Token token,
+                                            final LocalDate from,
+                                            final LocalDate to,
+                                            final String ref) {
         // Use the user provided, or the one the token belongs to
-        final String resolvedUserReference = resolveUserReference(token, userReference);
-        List<Accounting> accountingList = Collections.emptyList();
-        try {
-            accountingList = performAccountingQuery(
-                    token,
+        final String resolvedUserReference = resolveUserReference(token, ref);
+        return performFinancialQuery(
                     from,
                     to,
-                    (accounts, params) -> {
+                    null,
+                    (params) -> {
                         try {
-                           return accounts.getOwned(resolvedUserReference, params);
+                            return getAccountsRoute(token).getOwned(resolvedUserReference, params);
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
                     }
             );
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
-        return accountingList;
     }
 
     /**
      * Performs a query to getch accounting related activites from Upwork.
-     * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
-     * @param token The user token to be used for authentication
+     *
      * @param from The date from which to start the query
-     * @param to The date up to which the query should check
+     * @param to   The date up to which the query should check
      * @param exec The callback to perform the query execution and extract the appropriate result.
      *             By result that means a typical report representation which can be mapped to a list of Accounting
      *             records.
      * @return The list of records found, if any.
      * @throws Exception If any errors were encountered while processing the request.
+     * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
      */
-    private List<Accounting> performAccountingQuery(final Token token,
-                                                    final LocalDate from,
-                                                    final LocalDate to,
-                                                    final BiFunction<Accounts, HashMap<String, String>, JSONObject> exec) throws Exception {
+    private List<FinanceRecord> performFinancialQuery(final LocalDate from,
+                                                      final LocalDate to,
+                                                      final String additionalFields,
+                                                      final Function<HashMap<String, String>, JSONObject> exec) {
         // Build the parameters
         final HashMap<String, String> params = new HashMap<>(1);
+        String queryFields = "accounting_entity__reference,reference,buyer_team__reference,date,amount,type,subtype,description,date_due";
+        // If there are additional fields
+        if (StringUtils.hasText(additionalFields)) {
+            // Add them to the query
+            queryFields += "," + additionalFields;
+        }
         params.put("tq", String.format(
-                "SELECT accounting_entity__reference,reference,buyer_team__reference,date,amount,type,subtype,description,date_due WHERE date >= '%s' AND date <= '%s'"
-                , dateFormatSQL.format(from), dateFormatSQL.format(to))
+                "SELECT %s WHERE date >= '%s' AND date <= '%s'"
+                , queryFields, dateFormatSQL.format(from), dateFormatSQL.format(to))
         );
         // Re-map the entries
-        final Accounts accounts = new Accounts(getClientProvider().getClient(token));
-        final JSONObject accountResponse = exec.apply(accounts, params);
-        return fromJsonArray(remapTable(accountResponse), Accounting.class);
+        final JSONObject accountResponse = exec.apply(params);
+        // Check for errors
+        checkForException(accountResponse);
+        return fromJsonArray(remapTable(accountResponse), FinanceRecord.class);
+    }
+
+    private Accounts getAccountsRoute(final Token token) {
+        return new Accounts(getClientProvider().getClient(token));
+    }
+
+    private Billings getBillingsRoute(final Token token) {
+        return new Billings(getClientProvider().getClient(token));
+    }
+
+    private Earnings getEarningsRoute(final Token token) {
+        return new Earnings(getClientProvider().getClient(token));
+    }
+
+    private Time getTimeRoute(final Token token) {
+        return new Time(getClientProvider().getClient(token));
     }
 
     /**
      * Performs a query to fetch time related activities from Upwork.
-     * @see <a href="https://developers.upwork.com/?lang=node#reports_time-reports-fields">Time Reports</a>
-     * @param token The user token to be used for authentication
-     * @param from The date from which to start the query
-     * @param to The date up to which the query should check
-     * @param exec The callback to perform the query execution and extract the appropriate result.
-     *             By result that means a typical report representation which can be mapped to a list of Earning
-     *             records.
+     *
+     * @param from             The date from which to start the query
+     * @param to               The date up to which the query should check
+     * @param additionalFields Any additional fields to include in the query
+     * @param exec             The callback to perform the query execution and extract the appropriate result.
+     *                         By result that means a typical report representation which can be mapped to a list of Earning
+     *                         records.
      * @return The list of records found, if any.
      * @throws Exception If any errors were encountered while processing the request.
+     * @see <a href="https://developers.upwork.com/?lang=node#reports_time-reports-fields">Time Reports</a>
      */
-    private List<Earning> performEarningsQuery(final Token token,
-                                                    final LocalDate from,
-                                                    final LocalDate to,
-                                                    final BiFunction<Earnings, HashMap<String, String>, JSONObject> exec) throws Exception {
+    private List<TimeRecord> performTimeQuery(final LocalDate from,
+                                              final LocalDate to,
+                                              final String additionalFields,
+                                              final Function<HashMap<String, String>, JSONObject> exec) {
         // Build the parameters
         final HashMap<String, String> params = new HashMap<>(1);
+        String queryFields = "reference,buyer_team__reference,date,amount,type,subtype,description,date_due";
+        // If there are additional fields
+        if (StringUtils.hasText(additionalFields)) {
+            // Add them to the query
+            queryFields += "," + additionalFields;
+        }
         // Build the select query
-        params.put("tq", String.format("SELECT reference,buyer_team__reference,date,amount,type,subtype,description,date_due WHERE date >= '%s' AND date <= '%s'", dateFormatSQL.format(from), dateFormatSQL.format(to)));
-        // Re-map the entries
-        final Earnings earnings = new Earnings(getClientProvider().getClient(token));
-        final JSONObject earningResponse = exec.apply(earnings, params);
+        params.put("tq", String.format("SELECT %s WHERE date >= '%s' AND date <= '%s'", queryFields, dateFormatSQL.format(from), dateFormatSQL.format(to)));
+        // Execute th request
+        final JSONObject earningResponse = exec.apply(params);
+        // Check for errors
+        checkForException(earningResponse);
         // Flatten the table
-        return fromJsonArray(remapTable(earningResponse), Earning.class);
+        final ArrayNode remappedTable = remapTable(earningResponse);
+        // Process to the required class
+        return fromJsonArray(remappedTable, TimeRecord.class);
     }
 
     /**
+     * Gets the user reference to be used, given a possible reference.
      *
-     * @param token
-     * @param inputRef
-     * @return
+     * @param token    The token to validate against
+     * @param inputRef The possible user reference, or null
+     * @return The reference that was given or that of the user who owns the token
      */
     private String resolveUserReference(final Token token, final String inputRef) {
         // Use the user provided, or the one the token belongs to
@@ -509,11 +718,12 @@ public class UpworkSvc {
     }
 
     /**
+     * Converts the JSON object to an instance given class
      *
-     * @param json
-     * @param cls
-     * @param <T>
-     * @return
+     * @param json The JSON array to be converted
+     * @param cls  The type of the object to be created
+     * @param <T>  The generic type/class hint
+     * @return The converted list of objects
      */
     private <T> T fromJson(final JSONObject json, Class<T> cls) {
         try {
@@ -524,13 +734,14 @@ public class UpworkSvc {
     }
 
     /**
+     * Converts the contents of a JSON array to a list of the given type
      *
-     * @param json
-     * @param cls
-     * @param <T>
-     * @return
+     * @param json The JSON array to be converted
+     * @param cls  The type of the internal elements/objects
+     * @param <T>  The generic type/class hint
+     * @return The converted list of objects
      */
-    private <T> List<T> fromJsonArray(final JSONArray json, Class<T> cls){
+    private <T> List<T> fromJsonArray(final JSONArray json, Class<T> cls) {
         try {
             return getObjectMapper().readValue(json.toString(),
                     getObjectMapper().getTypeFactory().constructCollectionType(List.class, cls));
@@ -539,6 +750,14 @@ public class UpworkSvc {
         }
     }
 
+    /**
+     * Converts the contents of a JSON array to a list of the given type
+     *
+     * @param json The JSON array to be converted
+     * @param cls  The type of the internal elements/objects
+     * @param <T>  The generic type/class hint
+     * @return The converted list of objects
+     */
     private <T> List<T> fromJsonArray(final ArrayNode json, Class<T> cls) {
         try {
             return getObjectMapper().readValue(json.toString(),
@@ -548,7 +767,7 @@ public class UpworkSvc {
         }
     }
 
-    private ArrayNode remapTable(final JSONObject response) {
+    private static ArrayNode remapTable(final JSONObject response) {
         final ArrayNode earnings = JsonUtil.newArray();
         try {
             // Extract the table
@@ -585,10 +804,62 @@ public class UpworkSvc {
                                     earnings.add(jsonObj);
                                 }
                         );
+            } else {
+                throw new IllegalArgumentException("Table attribute missing");
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
         return earnings;
+    }
+
+    /**
+     * Processes a response from Upwork to re-cast an error messages received
+     * @param jsonResponse The response to be checked
+     * @throws RuntimeException If any errors are discovered
+     */
+    private static void checkForException(final JSONObject jsonResponse) throws RuntimeException {
+        JSONObject errorObject = null;
+            try {
+                // If the response has an error
+                if (jsonResponse.has("errors")) {
+                    // It should be an array
+                    final JSONArray errors = jsonResponse.getJSONArray("errors");
+                    // if there are entries
+                    if (errors.length() > 0) {
+                        // Take the first element
+                        errorObject = errors.getJSONObject(0);
+                    }
+                } else if (jsonResponse.has("error")) {
+                    errorObject = jsonResponse.getJSONObject("error");
+                }
+                // If an error was set
+                if (errorObject != null) {
+                    // Build the message
+                    final StringBuilder messageBldr = new StringBuilder();
+                    final String reason = errorObject.optString("reason");
+                    // If there is a valid reason
+                    if (StringUtils.hasText(reason)) {
+                        // Add it to the message
+                        messageBldr.append('[').append(reason).append(']');
+                    }
+                    final String message = errorObject.optString("message");
+                    // If there is a valid message
+                    if (StringUtils.hasText(message)) {
+                        // If there was content
+                        if (messageBldr.length() > 0) {
+                            // Add a space
+                            messageBldr.append(' ');
+                        }
+                        // Add it to the message
+                        messageBldr.append(message);
+                    }
+                    // Throw it as an exception
+                    throw new RuntimeException(messageBldr.toString());
+                }
+            } catch (JSONException jsonException) {
+                log.error(jsonException.getMessage(), jsonException);
+                throw new RuntimeException(jsonException);
+            }
     }
 }

@@ -5,11 +5,17 @@ type Query {
     upworkLogin: RequestDetails,
     upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
     upworkUser(ref: String): UpworkUser
+    upworkTeamUsers(ref: String!): [UpworkUser]
     upworkCompanies(ref: String): [UpworkCompany]
+    upworkCompanyTeams(companyRef: String!): [UpworkTeam]
+    upworkCompanyDiary(companyOrTeamID: String!, date: String): [UpworkCompany]
     upworkTeams(ref: String): [UpworkTeam]
-    upworkUserEarnings(from: String, to: String): [UpworkEarning]
-    upworkEntityAccounting(ref: String!, from: String, to: String): [UpworkAccounting]
-    upworkUserAccounting(ref: String, from: String, to: String): [UpworkAccounting]
+    upworkUserEarnings(from: String, to: String, ref: String): [UpworkTimeRecord]
+    upworkTeamTime(from: String, to: String, companyRef: String!, teamRef: String!): [UpworkTimeRecord]
+    upworkAgencyTime(from: String, to: String, companyRef: String!, agencyRef: String!): [UpworkTimeRecord]
+    upworkCompanyTime(from: String, to: String, companyRef: String!): [UpworkTimeRecord]
+    upworkEntityAccounting(ref: String!, from: String, to: String): [UpworkFinanceRecord]
+    upworkUserAccounting(ref: String, from: String, to: String): [UpworkFinanceRecord]
 
     # Wave
     waveLogin(state: String!): RequestDetails

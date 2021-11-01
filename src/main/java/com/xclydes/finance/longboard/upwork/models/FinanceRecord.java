@@ -1,6 +1,6 @@
 package com.xclydes.finance.longboard.upwork.models;
 
-public class Financial {
+public class FinanceRecord {
     /**
      * The reference of the accounting transaction.
      */

@@ -10,6 +10,7 @@ type UpworkUser {
     is_provider: String
     first_name: String
     profile_key: String
+    has_contract: String
 }
 type UpworkCompany {
     name: String!
@@ -26,8 +27,9 @@ type UpworkTeam {
     company_name: String
     parent_team__id: String
     parent_team__name: String
+    payment_verification_status: String
 }
-type UpworkEarning {
+type UpworkTimeRecord {
     reference: String!
     type: String!
     subtype: String!
@@ -36,8 +38,17 @@ type UpworkEarning {
     amount: String
     description: String
     date_due: String
+    agency_id: String
+    agency_company_id: String
+    company_id: String
+    hours: String
+    charges: String
+    hours_online: String
+    charges_online: String
+    hours_offline: String
+    charges_offline: String
 }
-type UpworkAccounting {
+type UpworkFinanceRecord {
     reference: String!
     type: String!
     subtype: String!

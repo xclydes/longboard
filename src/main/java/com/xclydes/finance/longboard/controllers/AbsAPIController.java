@@ -30,6 +30,12 @@ public abstract class AbsAPIController<C> {
     }
 
     public static <T> Mono<T> wrapLogic(final Consumer<MonoSink<T>> consumer) {
-        return Mono.create(consumer).onErrorStop();
+        return Mono.<T>create((sink) -> {
+            try {
+                consumer.accept(sink);
+            } catch (Throwable e) {
+                sink.error(e);
+            }
+        }).onErrorStop();
     }
 }

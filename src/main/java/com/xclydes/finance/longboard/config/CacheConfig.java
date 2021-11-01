@@ -32,6 +32,7 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_APICLIENT = "upwork.api_client";
     public static final String UPWORK_ACCESSTOKEN = "upwork.token.access";
     public static final String UPWORK_USER = "upwork.user";
+    public static final String UPWORK_USER_BY_TEAM = "upwork.user.team";
     public static final String UPWORK_TEAMS = "upwork.teams";
     public static final String UPWORK_COMPANY = "upwork.company";
     public static final String UPWORK_EARNINGS_USER = "upwork.earnings.user";
@@ -51,7 +52,7 @@ public class CacheConfig extends CachingConfigurerSupport {
                 WAVE_ACCOUNT, WAVE_ACCOUNTS, WAVE_ACCESSTOKEN,
                 WAVE_CUSTOMER, WAVE_CUSTOMERS, WAVE_PRODUCT, WAVE_PRODUCTS, WAVE_USER, WAVE_APIID,
                 UPWORK_APICLIENT, UPWORK_ACCESSTOKEN,
-                UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS_USER, UPWORK_USER,
+                UPWORK_TEAMS, UPWORK_COMPANY, UPWORK_EARNINGS_USER, UPWORK_USER, UPWORK_USER_BY_TEAM,
                 UPWORK_EARNINGS_BUYER_TEAM, UPWORK_EARNINGS_BUYER_COMPANY,
                 UPWORK_ACCOUNTING_ENTITY, UPWORK_ACCOUNTING_USER, UPWORK_EARNINGS_FREELANCER_COMPANY,
                 UPWORK_EARNINGS_FREELANCER_TEAM

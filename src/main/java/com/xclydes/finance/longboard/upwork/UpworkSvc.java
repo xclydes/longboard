@@ -581,8 +581,8 @@ public class UpworkSvc {
                                         final String value = valueList.get(index);
                                         final String heading = headings.get(index);
                                         jsonObj.put(heading, value);
-                                        earnings.add(jsonObj);
                                     }
+                                    earnings.add(jsonObj);
                                 }
                         );
             }

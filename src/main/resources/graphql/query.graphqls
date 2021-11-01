@@ -8,14 +8,13 @@ type Query {
     upworkCompanies(ref: String): [UpworkCompany]
     upworkTeams(ref: String): [UpworkTeam]
     upworkUserEarnings(from: String, to: String): [UpworkEarning]
-
     upworkEntityAccounting(ref: String!, from: String, to: String): [UpworkAccounting]
     upworkUserAccounting(ref: String, from: String, to: String): [UpworkAccounting]
-
 
     # Wave
     waveLogin(state: String!): RequestDetails
     waveAccessToken(verifier: String!): AccessToken
+    waveRefreshToken(refresh: String!): AccessToken
     waveUser: WaveUser
     waveBusiness(id: ID!): WaveBusiness
     waveBusinesses(page: Int, pageSize: Int): [BusinessPage]

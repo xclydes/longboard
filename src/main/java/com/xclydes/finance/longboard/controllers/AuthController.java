@@ -50,10 +50,14 @@ public class AuthController {
         return getWaveSvc().getLoginUrl(state);
     }
 
-
     @QueryMapping
     public CorePublisher<Token> waveAccessToken(@Argument final String verifier) {
         return getWaveSvc().getAccessToken(verifier);
+    }
+
+    @QueryMapping
+    public CorePublisher<Token> waveRefreshToken(@Argument final String refreshCode) {
+        return getWaveSvc().getRefreshedAccessToken(refreshCode);
     }
 
     @GetMapping("/auth/wave/callback")

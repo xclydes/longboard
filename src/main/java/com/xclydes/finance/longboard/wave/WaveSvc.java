@@ -128,7 +128,6 @@ public class WaveSvc {
         return Mono.just(new RequestToken(state, null, uriComponentsBuilder.toUriString()));
     }
 
-
     /**
      * Exchanges the request token and verifier supplied for an access token
      * @param verifier The verifier to submit
@@ -136,6 +135,30 @@ public class WaveSvc {
      */
     @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
     public Mono<Token> getAccessToken(final String verifier) {
+        // Build the request body
+        final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();
+        bodyValues.add("grant_type", "authorization_code");
+        bodyValues.add("code", verifier);
+        // Process it
+        return this.exchangeForToken(bodyValues);
+    }
+
+    /**
+     * Exchanges the request token and verifier supplied for an access token
+     * @param refreshToken The refresh token to submit
+     * @return The access token returned
+     */
+    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
+    public Mono<Token> getRefreshedAccessToken(final String refreshToken) {
+        // Build the request body
+        final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();
+        bodyValues.add("grant_type", "refresh_token");
+        bodyValues.add("refresh_token", refreshToken);
+        // Process it
+        return this.exchangeForToken(bodyValues);
+    }
+
+    private Mono<Token> exchangeForToken(final MultiValueMap<String, String> customValues) {
         // Get the client
         final WebClient restClient = this.getClientProviderRest().getClient();
 
@@ -143,9 +166,9 @@ public class WaveSvc {
         final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();
         bodyValues.add("client_id", this.getClientId());
         bodyValues.add("client_secret", this.getClientSecret());
-        bodyValues.add("grant_type", "authorization_code");
         bodyValues.add("redirect_uri", StringUtils.trimWhitespace(this.getCallback()));
-        bodyValues.add("code", verifier);
+        // Add the custom values
+        bodyValues.addAll(customValues);
 
         // Post the oauth2/token/ endpoint
         return restClient.post()
@@ -155,15 +178,12 @@ public class WaveSvc {
             .body(BodyInserters.fromFormData(bodyValues))
             .retrieve()
             .bodyToMono(ObjectNode.class)
-            .map( jsonNode -> {
-                return Token.of(
-                    jsonNode.required("access_token").asText(),
-                    jsonNode.required("refresh_token").asText(),
-                    jsonNode.required("expires_in").asInt()
-                );
-            });
+            .map( jsonNode -> Token.of(
+                jsonNode.required("access_token").asText(),
+                jsonNode.required("refresh_token").asText(),
+                jsonNode.required("expires_in").asInt()
+            ));
     }
-
 
     /**
      * Decodes and parses the ID given into its constituent parts

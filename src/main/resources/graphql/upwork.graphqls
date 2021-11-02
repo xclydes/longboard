@@ -35,7 +35,7 @@ type UpworkTimeRecord {
     subtype: String!
     buyer_team__reference: String
     date: String!
-    amount: String
+    amount: Float
     description: String
     date_due: String
     agency_id: String
@@ -70,7 +70,7 @@ type UpworkFinanceRecord {
     provider__id: String
     provider_name: String
     date: String!
-    amount: String
+    amount: Float
     description: String
     date_due: String
     assignment__reference: String

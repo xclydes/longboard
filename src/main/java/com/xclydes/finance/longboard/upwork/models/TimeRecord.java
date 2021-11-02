@@ -81,7 +81,7 @@ public class TimeRecord implements Serializable {
      * The total amount charged to the client.
      * Supports aggregation
      */
-    public String charges;
+    public Double charges;
     /**
      * The number of online hours in hours.
      * Supports aggregation
@@ -106,7 +106,7 @@ public class TimeRecord implements Serializable {
     public String reference;
     public String buyer_team__reference;
     public String date;
-    public String amount;
+    public Double amount;
     public String type;
     public String subtype;
     public String description;

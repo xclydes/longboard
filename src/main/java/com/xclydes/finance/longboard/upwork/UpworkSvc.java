@@ -224,7 +224,7 @@ public class UpworkSvc {
         }
     }
 
-//    @Cacheable(cacheNames = {UPWORK_TEAMS})
+    @Cacheable(cacheNames = {UPWORK_COMPANY_TEAMS})
     public List<Team> companyTeams(final Token token, final String companyRef) {
         // If a valid reference is not found
         final String resolvedEntityRef = ValidationUtil.requires(companyRef,
@@ -242,9 +242,10 @@ public class UpworkSvc {
         }
     }
 
-    public List<DiaryRecord> workDiaryForCompany(final Token token,
-                                                 final LocalDate date,
-                                                 final String teamOrCompanyID) {
+    @Cacheable(cacheNames = {UPWORK_COMPANY_WORKDIARY})
+    public List<DiaryRecord> companyWorkdiary(final Token token,
+                                              final LocalDate date,
+                                              final String teamOrCompanyID) {
         // If a valid reference is not found
         final String resolvedEntityID = ValidationUtil.requires(teamOrCompanyID,
                 StringUtils::hasText, "A valid freelancer/company ID is required");
@@ -303,11 +304,11 @@ public class UpworkSvc {
      * @param ref   The reference for the freelancer
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
-    public List<FinanceRecord> billiingsForUser(final Token token,
-                                            final LocalDate from,
-                                            final LocalDate to,
-                                            final String ref
+    @Cacheable(cacheNames = {UPWORK_BILLING_USER})
+    public List<FinanceRecord> billingsForUser(final Token token,
+                                               final LocalDate from,
+                                               final LocalDate to,
+                                               final String ref
     ) {
         // Use the user provided, or the one the token belongs to
         final String resolvedRef = resolveUserReference(token, ref);
@@ -454,7 +455,7 @@ public class UpworkSvc {
      * @param companyRef   The reference of the company to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_TIME_COMPANY})
     public List<TimeRecord> timeByCompany(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
@@ -487,7 +488,7 @@ public class UpworkSvc {
      * @param agencyRef   The reference of the agency to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_TIME_AGENCY})
     public List<TimeRecord> timeByAgency(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
@@ -525,7 +526,7 @@ public class UpworkSvc {
      * @param teamRef   The reference of the team to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_TIME_TEAM})
     public List<TimeRecord> timeByTeam(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,

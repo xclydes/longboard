@@ -94,6 +94,16 @@
       "name": "longboard.wave.oauth.token",
       "type": "java.lang.String",
       "description": "The OAuth endpoint to be used when requesting an access token from Wave."
+    },
+    {
+      "name": "longboard.executor.size",
+      "type": "java.lang.String",
+      "description": "The core pool size to be set on the general task executor pool."
+    },
+    {
+      "name": "longboard.executor.prefix",
+      "type": "java.lang.String",
+      "description": "The thread prefix to be applied to the general task executor pool."
     }
   ]
 }

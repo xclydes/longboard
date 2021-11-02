@@ -9,6 +9,7 @@ import com.xclydes.finance.longboard.util.DatesUtil;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.SchedulingTaskExecutor;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -16,22 +17,24 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 @Controller
 public class UpworkController extends AbsAPIController<OAuthClient> {
 
     private final UpworkSvc upworkSvc;
+    private final SchedulingTaskExecutor taskExecutor;
 
     public UpworkController(final IClientProvider<OAuthClient> clientProvider,
-                            final UpworkSvc upworkSvc) {
+                            final UpworkSvc upworkSvc,
+                            final SchedulingTaskExecutor longboardTaskExecutor) {
         super(clientProvider);
         this.upworkSvc = upworkSvc;
+        this.taskExecutor = longboardTaskExecutor;
+    }
+
+    protected SchedulingTaskExecutor getTaskExecutor() {
+        return taskExecutor;
     }
 
     public UpworkSvc getUpworkSvc() {
@@ -81,31 +84,20 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
             // Generate a request for every date in-between
             fromDate.datesUntil(toDate.plusDays(1))
                     .parallel()
-                    .map(requestDate -> CompletableFuture.supplyAsync(() ->
-                            getUpworkSvc().workDiaryForCompany(token, requestDate, id)))
-                    .reduce(
-                        new ArrayList<DiaryRecord>(),
-                        (gathered, task) -> {
-                            try {
-                                gathered.addAll(task.get());
-                            } catch (Exception e) {
-                                // TODO What about this?
-                            }
-                            return gathered;
-                        },
-                        (l1, l2) -> {
-                            l1.addAll(l2);
-                            return l1;
-                        }
+                    .map(requestDate -> getTaskExecutor().submit(() ->
+                            getUpworkSvc().companyWorkdiary(token, requestDate, id))
                     )
-                    .forEach(sink::next);
+                    .forEach(task -> {
+                        try {
+                            // Success with each
+                            task.get().forEach(sink::next);
+                        } catch (Exception e) {
+                            // TODO What about this?
+                        }
+                    });
             // That's all
             sink.complete();
         });
-
-
-//        return wrapLogic(sink -> sink.success(getUpworkSvc()
-//                .workDiaryForCompany(token, LocalDate.parse(from, DatesUtil.formatterSQL()), id)));
     }
 
     @QueryMapping

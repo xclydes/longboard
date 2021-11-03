@@ -42,7 +42,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<User> upworkUser(final Token token, @Argument String ref) {
+    public Mono<User> upworkUser(final Token token, @Argument("ref") String ref) {
         return wrapLogic(sink -> getUpworkSvc()
                 .user(token, ref)
                 .ifPresentOrElse(
@@ -53,7 +53,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<Company>> upworkCompanies(final Token token,
-                                               @Argument String ref) {
+                                               @Argument("ref") String ref) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
                 .companies(token, ref)));
     }
@@ -74,13 +74,11 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     @QueryMapping
     public Flux<DiaryRecord> upworkCompanyDiary(final Token token,
                                                 @Argument("companyOrTeamID") final String id,
-                                                @Argument("from") final String from,
-                                                @Argument("to") final String to
+                                                @Argument("from") final LocalDate fromDate,
+                                                @Argument("to") LocalDate to
     ) {
         return Flux.create((sink) -> {
-            final LocalDate fromDate = LocalDate.parse(from, DatesUtil.formatterSQL());
-            final LocalDate toDate = StringUtils.hasText(to) ?
-                    LocalDate.parse(to, DatesUtil.formatterSQL()) : fromDate;
+            final LocalDate toDate = to != null ? to : fromDate;
             // Generate a request for every date in-between
             fromDate.datesUntil(toDate.plusDays(1))
                     .parallel()
@@ -101,23 +99,23 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<List<User>> upworkTeamUsers(final Token token, @Argument final String ref) {
+    public Mono<List<User>> upworkTeamUsers(final Token token, @Argument("teamRef") final String ref) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
                 .usersInTeam(token, ref)));
     }
 
     @QueryMapping
     public Mono<List<FinanceRecord>> upworkUserEarnings(final Token token,
-                                                     @Argument final String from,
-                                                     @Argument final String to,
-                                                     @Argument final String ref
+                                                    @Argument("from") final LocalDate from,
+                                                    @Argument("to") final LocalDate to,
+                                                     @Argument("userRef") final String ref
     ) {
         return wrapLogic(sink -> {
             final List<FinanceRecord> earnings = getUpworkSvc()
                     .earningsForUser(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
                             ref
                     );
             sink.success(earnings);
@@ -126,16 +124,16 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<TimeRecord>> upworkCompanyTime(final Token token,
-                                                    @Argument final String from,
-                                                    @Argument final String to,
+                                                    @Argument("from") final LocalDate from,
+                                                    @Argument("to") final LocalDate to,
                                                     @Argument("companyId") final String company
     ) {
         return wrapLogic(sink -> {
             final List<TimeRecord> earnings = getUpworkSvc()
                     .timeByCompany(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
                             company
                     );
             sink.success(earnings);
@@ -144,15 +142,15 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<TimeRecord>> upworkUserTime(final Token token,
-                                                 @Argument final String from,
-                                                 @Argument final String to
+                                                 @Argument("from") final LocalDate from,
+                                                 @Argument("to") final LocalDate to
     ) {
         return wrapLogic(sink -> {
             final List<TimeRecord> earnings = getUpworkSvc()
                     .timeByUser(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL())
+                            from,
+                            to
                     );
             sink.success(earnings);
         });
@@ -160,8 +158,8 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<TimeRecord>> upworkTeamTime(final Token token,
-                                                 @Argument final String from,
-                                                 @Argument final String to,
+                                                 @Argument("from") final LocalDate from,
+                                                 @Argument("to") final LocalDate to,
                                                  @Argument("companyId") final String company,
                                                  @Argument("teamId") final String team
     ) {
@@ -169,8 +167,8 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
             final List<TimeRecord> earnings = getUpworkSvc()
                     .timeByTeam(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
                             company,
                             team
                     );
@@ -180,8 +178,8 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<TimeRecord>> upworkAgencyTime(final Token token,
-                                                   @Argument final String from,
-                                                   @Argument final String to,
+                                                   @Argument("from") final LocalDate from,
+                                                   @Argument("to") final LocalDate to,
                                                    @Argument("companyId") final String company,
                                                    @Argument("agencyId") final String agency
     ) {
@@ -189,8 +187,8 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
             final List<TimeRecord> earnings = getUpworkSvc()
                     .timeByAgency(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
                             company,
                             agency
                     );
@@ -200,16 +198,16 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<FinanceRecord>> upworkEntityAccounting(final Token token,
-                                                            @Argument final String ref,
-                                                            @Argument final String from,
-                                                            @Argument final String to
+                                                            @Argument("ref") final String ref,
+                                                            @Argument("from") final LocalDate from,
+                                                            @Argument("to") final LocalDate to
     ) {
         return wrapLogic(sink -> {
             final List<FinanceRecord> earnings = getUpworkSvc()
                     .accountsForEntity(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
                             ref
                     );
             sink.success(earnings);
@@ -218,16 +216,34 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<FinanceRecord>> upworkUserAccounting(final Token token,
-                                                          @Argument final String ref,
-                                                          @Argument final String from,
-                                                          @Argument final String to
+                                                          @Argument("ref") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
     ) {
         return wrapLogic(sink -> {
             final List<FinanceRecord> earnings = getUpworkSvc()
                     .accountsForUser(
                             token,
-                            LocalDate.parse(from, DatesUtil.formatterSQL()),
-                            LocalDate.parse(to, DatesUtil.formatterSQL()),
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkUserBilling(final Token token,
+                                                          @Argument("userRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .billingsForUser(
+                            token,
+                            from,
+                            to,
                             ref
                     );
             sink.success(earnings);

@@ -4,19 +4,23 @@ type Query {
     # Upwork
     upworkLogin: RequestDetails,
     upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
+
     upworkUser(ref: String): UpworkUser
-    upworkTeamUsers(ref: String!): [UpworkUser]
     upworkCompanies(ref: String): [UpworkCompany]
     upworkCompanyTeams(companyRef: String!): [UpworkTeam]
-    upworkCompanyDiary(companyOrTeamID: String!, from: String!, to: String): [UpworkSnapshot]
+
     upworkTeams(ref: String): [UpworkTeam]
-    upworkUserTime(from: String, to: String): [UpworkTimeRecord]
-    upworkTeamTime(from: String, to: String, companyId: String!, teamId: String!): [UpworkTimeRecord]
-    upworkAgencyTime(from: String, to: String, companyId: String!, agencyId: String!): [UpworkTimeRecord]
-    upworkCompanyTime(from: String, to: String, companyId: String!): [UpworkTimeRecord]
-    upworkUserEarnings(from: String, to: String, ref: String): [UpworkFinanceRecord]
-    upworkEntityAccounting(ref: String!, from: String, to: String): [UpworkFinanceRecord]
-    upworkUserAccounting(ref: String, from: String, to: String): [UpworkFinanceRecord]
+    upworkTeamUsers(teamRef: String!): [UpworkUser]
+
+    upworkUserTime(from: Date!, to: Date = ""): [UpworkTimeRecord]
+    upworkTeamTime(from: Date!, to: Date = "", companyId: String!, teamId: String!): [UpworkTimeRecord]
+    upworkAgencyTime(from: Date!, to: Date = "", companyId: String!, agencyId: String!): [UpworkTimeRecord]
+    upworkCompanyTime(from: Date!, to: Date = "", companyId: String!): [UpworkTimeRecord]
+    upworkCompanyDiary(companyOrTeamID: String!, from: Date!, to: Date): [UpworkSnapshot]
+    upworkUserEarnings(from: Date!, to: Date = "", userRef: String): [UpworkFinanceRecord]
+    upworkEntityAccounting(ref: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkUserAccounting(ref: String, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkUserBilling(userRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
 
     # Wave
     waveLogin(state: String!): RequestDetails

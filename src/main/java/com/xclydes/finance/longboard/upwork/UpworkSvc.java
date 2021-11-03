@@ -284,20 +284,25 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference for the freelancer
+     * @param userRef   The reference for the freelancer
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
     public List<FinanceRecord> earningsForUser(final Token token,
                                             final LocalDate from,
                                             final LocalDate to,
-                                            final String ref
+                                            final String userRef
     ) {
         // Use the user provided, or the one the token belongs to
-        final String resolvedRef = resolveUserReference(token, ref);
+        final String resolvedRef = resolveUserReference(token, userRef);
+        // Disallowed fields: `comment`, `po_number`.
+        // Supported filters: `date`, `week`, `month`, `year`, `date_due`, `buyer_company__reference`,
+        // `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`, `provider_company__reference`,
+        // `provider_company__id`, `assignment__reference`, `type`, `subtype`.
+        // Permissions: freelancer.
         return performFinancialQuery(
                 QueryBuilder
-                    .get(FinanceReportFields)
+                    .get(ArrayUtil.without(FinanceReportFields, "comment", "po_number"))
                     .andWhere("date", ">=", from)
                     .andWhere("date", "<=", to)
                     .build(),
@@ -317,18 +322,19 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference for the freelancer
+     * @param userRef   The reference for the freelancer
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_BILLING_USER})
     public List<FinanceRecord> billingsForUser(final Token token,
                                                final LocalDate from,
                                                final LocalDate to,
-                                               final String ref
+                                               final String userRef
     ) {
         // Use the user provided, or the one the token belongs to
-        final String resolvedRef = resolveUserReference(token, ref);
-        // Disallowed fields: `comment`, `po_number`. Supported filters: `date`, `week`, `month`, `year`, `date_due`,
+        final String resolvedRef = resolveUserReference(token, userRef);
+        // Disallowed fields: `comment`, `po_number`.
+        // Supported filters: `date`, `week`, `month`, `year`, `date_due`,
         // `buyer_company__reference`, `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`,
         // `provider_company__reference`, `provider_company__id`, `assignment__reference`, `type`, `subtype`.
         // Permissions: Exclusive Agency Member
@@ -354,21 +360,28 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference of the team
+     * @param companyRef  The reference ID of the company's parent team the authenticated user has access to.
+     *                    The authenticated user must be the owner of the company.
+     *                    Use Teams & Companies resource to get it.
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_COMPANY})
-    public List<TimeRecord> earningsForFreelancerCompany(final Token token,
+    public List<FinanceRecord> billingsForFreelancerCompany(final Token token,
                                                          final LocalDate from,
                                                          final LocalDate to,
-                                                         final String ref
+                                                         final String companyRef
     ) {
         // If a valid reference is not found
-        final String resolvedRef = ValidationUtil.requires(ref,
+        final String resolvedRef = ValidationUtil.requires(companyRef,
                 StringUtils::hasText, "A valid freelancer/company reference is required");
-        return performTimeQuery(
+        //  Disallowed fields: `comment`, `po_number`.
+        //  Supported filters: `date`, `week`, `month`, `year`, `date_due`, `buyer_company__reference`,
+        //  `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`, `provider__reference`,
+        //  `provider__id`, `assignment__reference`, `accounting_entity__reference`, `type`, `subtype`.
+        //  Permissions: owner or admin.
+        return performFinancialQuery(
                 QueryBuilder
-                        .get(TimeReportFields)
+                        .get(ArrayUtil.without(FinanceReportFields, "comment", "po_number"))
                         .andWhere("date", ">=", from)
                         .andWhere("date", "<=", to)
                         .build(),
@@ -422,27 +435,69 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference of the team
+     * @param clientTeamRef The reference ID of the team the authenticated user has access to.
+     *                      The authenticated user must be an admin or a staffing manager of the team.
+     *                      Use Companies & Teams resource to get it
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
-    public List<TimeRecord> earningsForBuyersTeam(final Token token,
-                                                  final LocalDate from,
-                                                  final LocalDate to,
-                                                  final String ref
+    public List<FinanceRecord> earningsForBuyersTeam(final Token token,
+                                                     final LocalDate from,
+                                                     final LocalDate to,
+                                                     final String clientTeamRef
     ) {
         // If a valid reference is not found
-        final String resolvedRef = ValidationUtil.requires(ref,
+        final String resolvedRef = ValidationUtil.requires(clientTeamRef,
                 StringUtils::hasText, "A valid buyers/team reference is required");
-        return performTimeQuery(
+        //Supported filters: `date`, `week`, `month`, `year`, `date_due`, `provider_team__reference`,
+        // `provider_team__id`, `provider__reference`, `provider__id`, `assignment__reference`, `type`,
+        // `subtype`, `po_number`.
+        // Permissions: hiring.
+        return performFinancialQuery(
                 QueryBuilder
-                        .get(TimeReportFields)
+                        .get(FinanceReportFields)
                         .andWhere("date", ">=", from)
                         .andWhere("date", "<=", to)
                         .build(),
                     (params) -> {
                         try {
                             return getEarningsRoute(token).getByBuyersTeam(resolvedRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets Finance records for a specific client team
+     *
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param clientTeamRef The reference ID of the team the authenticated user has access to.
+     *                      The authenticated user must be an admin or a staffing manager of the team.
+     *                      Use Companies & Teams resource to get it
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_TEAM})
+    public List<FinanceRecord> billingsForBuyersTeam(final Token token,
+                                                     final LocalDate from,
+                                                     final LocalDate to,
+                                                     final String clientTeamRef
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(clientTeamRef,
+                StringUtils::hasText, "A valid buyers/team reference is required");
+        return performFinancialQuery(
+                QueryBuilder
+                        .get(FinanceReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
+                    (params) -> {
+                        try {
+                            return getBillingsRoute(token).getByBuyersTeam(resolvedRef, params);
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -460,7 +515,7 @@ public class UpworkSvc {
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
-    public List<TimeRecord> earningsForBuyersCompany(final Token token,
+    public List<FinanceRecord> earningsForBuyersCompany(final Token token,
                                                      final LocalDate from,
                                                      final LocalDate to,
                                                      final String ref
@@ -468,9 +523,9 @@ public class UpworkSvc {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid buyers/company reference is required");
-        return performTimeQuery(
+        return performFinancialQuery(
                 QueryBuilder
-                        .get(TimeReportFields)
+                        .get(FinanceReportFields)
                         .andWhere("date", ">=", from)
                         .andWhere("date", "<=", to)
                         .build(),
@@ -486,13 +541,48 @@ public class UpworkSvc {
 
     /**
      * Gets earning records related to a specific client company
+     *
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param buyerCompanyRef The reference ID of the company the authenticated user has access to.
+     *                        The authenticated user must be the owner of the company.
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_COMPANY})
+    public List<FinanceRecord> billingsForBuyersCompany(final Token token,
+                                                     final LocalDate from,
+                                                     final LocalDate to,
+                                                     final String buyerCompanyRef
+    ) {
+        // If a valid reference is not found
+        final String resolvedRef = ValidationUtil.requires(buyerCompanyRef,
+                StringUtils::hasText, "A valid buyers/company reference is required");
+        return performFinancialQuery(
+                QueryBuilder
+                        .get(FinanceReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
+                    (params) -> {
+                        try {
+                            return getBillingsRoute(token).getByBuyersCompany(resolvedRef, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets earning records related to a specific client company
      *Fields that cannot appear in the query: `team_id`, `team_name`.
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_TIME_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_TIME_USER})
     public List<TimeRecord> timeByUser(final Token token,
                                          final LocalDate from,
                                          final LocalDate to
@@ -640,18 +730,26 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference of the entity to be queried
+     * @param accountingEntityref   The reference ID of an accounting entity. Example: `34567`.
+     *              You need to contact Support Team in order to receive it - it remains unchangeable
      * @return The list of account records found
      */
     @Cacheable(cacheNames = {UPWORK_ACCOUNTING_ENTITY})
     public List<FinanceRecord> accountsForEntity(final Token token,
                                               final LocalDate from,
                                               final LocalDate to,
-                                              final String ref
+                                              final String accountingEntityref
     ) {
         // If a valid reference is not found
-        final String resolvedRef = ValidationUtil.requires(ref,
+        final String resolvedRef = ValidationUtil.requires(accountingEntityref,
                 StringUtils::hasText, "A valid account reference is required");
+        // Disallowed fields: none.
+        // Supported filters: `date`, `week`, `month`, `year`, `date_due`,
+        // `provider_company__reference`, `provider_company__id`, `provider__reference`, `provider__id`,
+        // `buyer_company__reference`, `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`,
+        // `assignment__reference`, `type`, `subtype`, `po_number`, `provider_team__reference`,
+        // `provider_team__id`.
+        // Permissions: finance manager.
         return performFinancialQuery(
                 QueryBuilder
                     .get(FinanceReportFields)

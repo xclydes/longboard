@@ -45,9 +45,12 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_ACCOUNTING_ENTITY = "upwork.accounting.entity";
     public static final String UPWORK_ACCOUNTING_USER = "upwork.accounting.user";
     public static final String UPWORK_BILLING_USER = "upwork.billing.user";
+    public static final String UPWORK_BILLINGS_BUYER_TEAM = "upwork.billing.buyer.team";
+    public static final String UPWORK_BILLINGS_BUYER_COMPANY = "upwork.billing.buyer.company";
     public static final String UPWORK_TIME_COMPANY = "upwork.time.company";
     public static final String UPWORK_TIME_AGENCY = "upwork.time.agency";
     public static final String UPWORK_TIME_TEAM = "upwork.time.team";
+    public static final String UPWORK_TIME_USER = "upwork.time.user";
 
 
     @Bean

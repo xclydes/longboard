@@ -76,7 +76,7 @@ public class TimeRecord implements Serializable {
      * during the date of worked_on.
      * Supports aggregation
      */
-    public String hours;
+    public Double hours;
     /**
      * The total amount charged to the client.
      * Supports aggregation
@@ -86,29 +86,20 @@ public class TimeRecord implements Serializable {
      * The number of online hours in hours.
      * Supports aggregation
      */
-    public String hours_online;
+    public Double hours_online;
     /**
      * The charges of work performed online.
      * Supports aggregation
      */
-    public String charges_online;
+    public Double charges_online;
     /**
      * The number of offline hours, in hours.
      * Supports aggregation
      */
-    public String hours_offline;
+    public Double hours_offline;
     /**
      * The charges of work performed offline.
      * Supports aggregation
      */
-    public String charges_offline;
-
-    public String reference;
-    public String buyer_team__reference;
-    public String date;
-    public Double amount;
-    public String type;
-    public String subtype;
-    public String description;
-    public String date_due;
+    public Double charges_offline;
 }

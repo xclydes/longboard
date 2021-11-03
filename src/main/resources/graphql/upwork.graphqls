@@ -30,23 +30,29 @@ type UpworkTeam {
     payment_verification_status: String
 }
 type UpworkTimeRecord {
-    reference: String!
-    type: String!
-    subtype: String!
-    buyer_team__reference: String
-    date: String!
-    amount: Float
-    description: String
-    date_due: String
+    worked_on: String!
+    week_worked_on: String!
+    month_worked_on: String
+    year_worked_on: String
+    provider_id: String
+    provider_name: String
+    team_id: String
+    team_name: String
+    assignment_team_id: String
+    assignment_name: String
+    assignment_ref: String
     agency_id: String
-    agency_company_id: String
+    agency_name: String
     company_id: String
-    hours: String
-    charges: String
-    hours_online: String
-    charges_online: String
-    hours_offline: String
-    charges_offline: String
+    task: String
+    memo: String
+    agency_company_id: String
+    hours: Float
+    charges: Float
+    hours_online: Float
+    charges_online: Float
+    hours_offline: Float
+    charges_offline: Float
 }
 type UpworkFinanceRecord {
     reference: String!
@@ -80,6 +86,7 @@ type UpworkFinanceRecord {
     notes: String
     po_number: String
 }
+
 type UpworkScreenshot {
     activity: Int!
     screenshot_img_med: String

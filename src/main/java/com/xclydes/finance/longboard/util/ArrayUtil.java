@@ -1,8 +1,9 @@
 package com.xclydes.finance.longboard.util;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class ArrayUtil {
 
@@ -22,6 +23,16 @@ public class ArrayUtil {
             mapped.put(parts[indx], parts[indx+1]);
         }
         return mapped;
+    }
 
+    public static <T> Iterable<T> without(final Iterable<T> original, final T ... elements) {
+        final List<T> elemsLst = Arrays.asList(elements);
+        return without(original, (input) -> !elemsLst.contains(input));
+    }
+
+    public static <T> Iterable<T> without(final Iterable<T> original, final Predicate<T> predicate) {
+        return StreamSupport.stream(original.spliterator(), true)
+                .filter(predicate)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
  }

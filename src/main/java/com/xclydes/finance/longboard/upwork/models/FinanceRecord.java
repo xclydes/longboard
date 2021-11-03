@@ -121,7 +121,7 @@ public class FinanceRecord {
      * The amount of the transaction.
      * Supports aggregation
      */
-    public String amount;
+    public Double amount;
     /**
      * The purchase order number.
      */

@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
+import com.xclydes.finance.longboard.util.ArrayUtil;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.JsonUtil;
 import com.xclydes.finance.longboard.util.ValidationUtil;
@@ -35,10 +36,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,6 +53,20 @@ public class UpworkSvc {
     public static final DateTimeFormatter dateFormatReport = DatesUtil.formatterReport();
     public static final DateTimeFormatter dateFormatDescription = DatesUtil.formatterDescriptive();
     public static final Pattern patternInvoiceDescription = Pattern.compile("^\\((.+)\\) ([^-\\s]+) - (\\d{1,2}):(\\d{2})\\shrs @ \\$([^/]*)/hr - ([\\d-/]*) - ([\\d-/]*)$");
+
+    private static final List<String> TimeReportFields = List.of(
+            "provider_id", "provider_name", "assignment_team_id", "assignment_name","assignment_ref",
+            "agency_id","agency_name","company_id","agency_company_id","task","memo","hours",
+            "charges","hours_online","charges_online","hours_offline","charges_offline",
+            "worked_on","week_worked_on","month_worked_on","year_worked_on");
+    private static final List<String> FinanceReportFields = List.of(
+            "reference", "date", "date_due", "assignment__reference", "assignment_name",
+            "accounting_entity__reference", "accounting_entity_name", "buyer_company__reference",
+            "buyer_company__id", "buyer_company_name", "buyer_team__reference", "buyer_team__id", "buyer_team_name",
+            "provider_company__reference", "provider_company__id", "provider_company_name", "provider_team__reference",
+            "provider_team__id", "provider_team_name", "provider__reference", "provider__id", "provider_name",
+            "type", "subtype", "description", "comment", "memo", "notes", "amount", "po_number"
+            );
 
     private final IClientProvider<OAuthClient> clientProvider;
     private final ObjectMapper objectMapper;
@@ -276,15 +288,19 @@ public class UpworkSvc {
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
-    public List<TimeRecord> earningsForUser(final Token token,
+    public List<FinanceRecord> earningsForUser(final Token token,
                                             final LocalDate from,
                                             final LocalDate to,
                                             final String ref
     ) {
         // Use the user provided, or the one the token belongs to
         final String resolvedRef = resolveUserReference(token, ref);
-        return performTimeQuery(
-                from, to, null,
+        return performFinancialQuery(
+                QueryBuilder
+                    .get(FinanceReportFields)
+                    .andWhere("date", ">=", from)
+                    .andWhere("date", "<=", to)
+                    .build(),
                 (params) -> {
                     try {
                         return getEarningsRoute(token).getByFreelancer(resolvedRef, params);
@@ -312,10 +328,16 @@ public class UpworkSvc {
     ) {
         // Use the user provided, or the one the token belongs to
         final String resolvedRef = resolveUserReference(token, ref);
+        // Disallowed fields: `comment`, `po_number`. Supported filters: `date`, `week`, `month`, `year`, `date_due`,
+        // `buyer_company__reference`, `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`,
+        // `provider_company__reference`, `provider_company__id`, `assignment__reference`, `type`, `subtype`.
+        // Permissions: Exclusive Agency Member
         return performFinancialQuery(
-                from, to,
-                // Disallowed fields: `comment`, `po_number`. Supported filters: `date`, `week`, `month`, `year`, `date_due`, `buyer_company__reference`, `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`, `provider_company__reference`, `provider_company__id`, `assignment__reference`, `type`, `subtype`. Permissions: Exclusive Agency Member
-                null,
+                QueryBuilder
+                    .get(ArrayUtil.without(FinanceReportFields, "comment", "po_number"))
+                    .andWhere("date", ">=", from)
+                    .andWhere("date", "<=", to)
+                    .build(),
                 (params) -> {
                     try {
                         return getBillingsRoute(token).getByFreelancer(resolvedRef, params);
@@ -345,7 +367,11 @@ public class UpworkSvc {
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid freelancer/company reference is required");
         return performTimeQuery(
-                from, to, null,
+                QueryBuilder
+                        .get(TimeReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
                 (params) -> {
                     try {
                         return getBillingsRoute(token).getByFreelancersCompany(resolvedRef, params);
@@ -375,7 +401,11 @@ public class UpworkSvc {
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid freelancer/team reference is required");
         return performTimeQuery(
-                from, to, null,
+                QueryBuilder
+                        .get(TimeReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
                 (params) -> {
                     try {
                         return getEarningsRoute(token).getByFreelancersTeam(resolvedRef, params);
@@ -405,7 +435,11 @@ public class UpworkSvc {
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid buyers/team reference is required");
         return performTimeQuery(
-                    from, to, null,
+                QueryBuilder
+                        .get(TimeReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
                     (params) -> {
                         try {
                             return getEarningsRoute(token).getByBuyersTeam(resolvedRef, params);
@@ -435,7 +469,11 @@ public class UpworkSvc {
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid buyers/company reference is required");
         return performTimeQuery(
-                    from, to, null,
+                QueryBuilder
+                        .get(TimeReportFields)
+                        .andWhere("date", ">=", from)
+                        .andWhere("date", "<=", to)
+                        .build(),
                     (params) -> {
                         try {
                             return getEarningsRoute(token).getByBuyersCompany(resolvedRef, params);
@@ -452,25 +490,63 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param companyRef   The reference of the company to be queried
+     * @return The list of earning records found
+     */
+    @Cacheable(cacheNames = {UPWORK_TIME_COMPANY})
+    public List<TimeRecord> timeByUser(final Token token,
+                                         final LocalDate from,
+                                         final LocalDate to
+    ) {
+        // Get the user for the token
+        final User user = this.user(token, null)
+                .orElseThrow(() -> new IllegalStateException("Unable to determine username"));
+        // Fields that cannot appear in the query: `provider_id`, `provider_name`, `charges`,
+        // `charges_online`, `charges_offline`.
+        return performTimeQuery(
+                QueryBuilder
+                        .get(ArrayUtil.without(TimeReportFields,"provider_id", "provider_name", "charges",
+                                "charges_online", "charges_offline"))
+                        .andWhere("worked_on", ">=", from)
+                        .andWhere("worked_on", "<=", to)
+                        .build(),
+                    (params) -> {
+                        try {
+                            return getTimeRoute(token).getByFreelancerFull(user.id, params);
+                        } catch (JSONException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+            );
+    }
+
+    /**
+     * Gets earning records related to a specific client company
+     *Fields that cannot appear in the query: `team_id`, `team_name`.
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @param companyId   The reference of the company to be queried
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_TIME_COMPANY})
     public List<TimeRecord> timeByCompany(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
-                                         final String companyRef
+                                         final String companyId
     ) {
         // If a valid reference is not found
-        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
+        final String resolvedCompanyId = ValidationUtil.requires(companyId,
                 StringUtils::hasText, "A valid buyers/company reference is required");
+        // Fields that cannot appear in the query: `company_id`
         return performTimeQuery(
-                    from, to,
-                    // Fields that cannot appear in the query: `company_id`
-        null,
+                QueryBuilder
+                        .get(ArrayUtil.without(TimeReportFields,"company_id"))
+                        .andWhere("worked_on", ">=", from)
+                        .andWhere("worked_on", "<=", to)
+                        .build(),
                     (params) -> {
                         try {
-                            return getTimeRoute(token).getByCompany(resolvedCompanyRef, params);
+                            return getTimeRoute(token).getByCompany(resolvedCompanyId, params);
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -484,31 +560,34 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param companyRef   The reference of the company to be queried
-     * @param agencyRef   The reference of the agency to be queried
+     * @param companyId   The reference of the company to be queried
+     * @param agencyId   The reference of the agency to be queried
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_TIME_AGENCY})
     public List<TimeRecord> timeByAgency(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
-                                         final String companyRef,
-                                         final String agencyRef
+                                         final String companyId,
+                                         final String agencyId
     ) {
         // If a valid reference is not found
-        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
+        final String resolvedCompany = ValidationUtil.requires(companyId,
                 StringUtils::hasText, "A valid buyers/company reference is required");
         // If a valid reference is not found
-        final String resolvedAgencyRef = ValidationUtil.requires(agencyRef,
+        final String resolvedAgency = ValidationUtil.requires(agencyId,
                 StringUtils::hasText, "A valid agency reference is required");
+        // Fields that cannot appear in the query: `agency_id`, `agency_name`,
+        // `charges`, `charges_online`, `charges_offline`.
         return performTimeQuery(
-                    from, to,
-                    // Fields that cannot appear in the query: `agency_id`, `agency_name`,
-                    // `charges`, `charges_online`, `charges_offline`.
-        null,
+                QueryBuilder
+                        .get(ArrayUtil.without(TimeReportFields,"agency_id", "agency_name", "agency_company_id", "charges", "charges_online", "charges_offline"))
+                        .andWhere("worked_on", ">=", from)
+                        .andWhere("worked_on", "<=", to)
+                        .build(),
                     (params) -> {
                         try {
-                            return getTimeRoute(token).getByAgency(resolvedCompanyRef, agencyRef, params);
+                            return getTimeRoute(token).getByAgency(resolvedCompany, resolvedAgency, params);
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -522,26 +601,29 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param companyRef   The reference of the company to be queried
-     * @param teamRef   The reference of the team to be queried
+     * @param companyId   The reference of the company to be queried
+     * @param teamId   The reference of the team to be queried
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_TIME_TEAM})
     public List<TimeRecord> timeByTeam(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
-                                         final String companyRef,
-                                         final String teamRef
+                                         final String companyId,
+                                         final String teamId
     ) {
         // If a valid reference is not found
-        final String resolvedCompanyRef = ValidationUtil.requires(companyRef,
-                StringUtils::hasText, "A valid buyers/company reference is required");
-        final String resolvedTeamRef = ValidationUtil.requires(teamRef,
-                StringUtils::hasText, "A valid buyers/company reference is required");
+        final String resolvedCompanyRef = ValidationUtil.requires(companyId,
+                StringUtils::hasText, "A valid company id is required");
+        final String resolvedTeamRef = ValidationUtil.requires(teamId,
+                StringUtils::hasText, "A valid team is required");
+        // Fields that cannot appear in the query: `team_id`, `team_name`
         return performTimeQuery(
-                    from, to,
-                    // Fields that cannot appear in the query: `team_id`, `team_name`
-        null,
+                QueryBuilder
+                        .get(ArrayUtil.without(TimeReportFields,"team_id", "team_name"))
+                        .andWhere("worked_on", ">=", from)
+                        .andWhere("worked_on", "<=", to)
+                        .build(),
                     (params) -> {
                         try {
                             return getTimeRoute(token).getByTeamFull(resolvedCompanyRef, resolvedTeamRef, params);
@@ -571,9 +653,11 @@ public class UpworkSvc {
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid account reference is required");
         return performFinancialQuery(
-                from,
-                to,
-                null,
+                QueryBuilder
+                    .get(FinanceReportFields)
+                    .andWhere("date", ">=", from)
+                    .andWhere("date", "<=", to)
+                    .build(),
                 (params) -> {
                     try {
                         return getAccountsRoute(token).getSpecific(resolvedRef, params);
@@ -601,9 +685,11 @@ public class UpworkSvc {
         // Use the user provided, or the one the token belongs to
         final String resolvedUserReference = resolveUserReference(token, ref);
         return performFinancialQuery(
-                    from,
-                    to,
-                    null,
+                QueryBuilder
+                    .get(FinanceReportFields)
+                    .andWhere("date", ">=", from)
+                    .andWhere("date", "<=", to)
+                    .build(),
                     (params) -> {
                         try {
                             return getAccountsRoute(token).getOwned(resolvedUserReference, params);
@@ -615,38 +701,18 @@ public class UpworkSvc {
     }
 
     /**
-     * Performs a query to getch accounting related activites from Upwork.
+     * Performs a query to fetch accounting related activities from Upwork.
      *
-     * @param from The date from which to start the query
-     * @param to   The date up to which the query should check
+     * @param query The query to be run
      * @param exec The callback to perform the query execution and extract the appropriate result.
      *             By result that means a typical report representation which can be mapped to a list of Accounting
      *             records.
      * @return The list of records found, if any.
-     * @throws Exception If any errors were encountered while processing the request.
      * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
      */
-    private List<FinanceRecord> performFinancialQuery(final LocalDate from,
-                                                      final LocalDate to,
-                                                      final String additionalFields,
+    private List<FinanceRecord> performFinancialQuery(final String query,
                                                       final Function<HashMap<String, String>, JSONObject> exec) {
-        // Build the parameters
-        final HashMap<String, String> params = new HashMap<>(1);
-        String queryFields = "accounting_entity__reference,reference,buyer_team__reference,date,amount,type,subtype,description,date_due";
-        // If there are additional fields
-        if (StringUtils.hasText(additionalFields)) {
-            // Add them to the query
-            queryFields += "," + additionalFields;
-        }
-        params.put("tq", String.format(
-                "SELECT %s WHERE date >= '%s' AND date <= '%s'"
-                , queryFields, dateFormatSQL.format(from), dateFormatSQL.format(to))
-        );
-        // Re-map the entries
-        final JSONObject accountResponse = exec.apply(params);
-        // Check for errors
-        checkForException(accountResponse);
-        return fromJsonArray(remapTable(accountResponse), FinanceRecord.class);
+        return performQuery(query, FinanceRecord.class, exec);
     }
 
     private Accounts getAccountsRoute(final Token token) {
@@ -667,39 +733,35 @@ public class UpworkSvc {
 
     /**
      * Performs a query to fetch time related activities from Upwork.
+     * Where conditions are only allowed on company_id, agency_id, provider_id, worked_on, assignment_team_id, task.
      *
-     * @param from             The date from which to start the query
-     * @param to               The date up to which the query should check
-     * @param additionalFields Any additional fields to include in the query
+     * @param query            The query to be executed
      * @param exec             The callback to perform the query execution and extract the appropriate result.
      *                         By result that means a typical report representation which can be mapped to a list of Earning
      *                         records.
      * @return The list of records found, if any.
-     * @throws Exception If any errors were encountered while processing the request.
      * @see <a href="https://developers.upwork.com/?lang=node#reports_time-reports-fields">Time Reports</a>
      */
-    private List<TimeRecord> performTimeQuery(final LocalDate from,
-                                              final LocalDate to,
-                                              final String additionalFields,
+    private List<TimeRecord> performTimeQuery(final String query,
                                               final Function<HashMap<String, String>, JSONObject> exec) {
+        return performQuery(query, TimeRecord.class, exec);
+    }
+
+    private <T> List<T> performQuery(final String query,
+                                     final Class<T> resultClass,
+                                     final Function<HashMap<String, String>, JSONObject> executor) {
         // Build the parameters
         final HashMap<String, String> params = new HashMap<>(1);
-        String queryFields = "reference,buyer_team__reference,date,amount,type,subtype,description,date_due";
-        // If there are additional fields
-        if (StringUtils.hasText(additionalFields)) {
-            // Add them to the query
-            queryFields += "," + additionalFields;
-        }
         // Build the select query
-        params.put("tq", String.format("SELECT %s WHERE date >= '%s' AND date <= '%s'", queryFields, dateFormatSQL.format(from), dateFormatSQL.format(to)));
+        params.put("tq", query);
         // Execute th request
-        final JSONObject earningResponse = exec.apply(params);
+        final JSONObject qryResponse = executor.apply(params);
         // Check for errors
-        checkForException(earningResponse);
+        checkForException(qryResponse);
         // Flatten the table
-        final ArrayNode remappedTable = remapTable(earningResponse);
+        final ArrayNode remappedTable = remapTable(qryResponse);
         // Process to the required class
-        return fromJsonArray(remappedTable, TimeRecord.class);
+        return fromJsonArray(remappedTable, resultClass);
     }
 
     /**
@@ -770,6 +832,13 @@ public class UpworkSvc {
         }
     }
 
+    /**
+     * Processes a table-like response from Upwork into an array node of
+     * remapped objects.
+     * Typically of the format {"table" : {"cols" : [], rows: {"c" : []}}}
+     * @param response The response from upwork to processed.
+     * @return The remapped table data
+     */
     private static ArrayNode remapTable(final JSONObject response) {
         final ArrayNode earnings = JsonUtil.newArray();
         try {

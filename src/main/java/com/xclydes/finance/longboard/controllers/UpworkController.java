@@ -66,9 +66,9 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
 
     @QueryMapping
     public Mono<List<Team>> upworkCompanyTeams(final Token token,
-                                               @Argument("companyOrTeamID") final String id) {
+                                               @Argument("companyRef") final String ref) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
-                .companyTeams(token, id)));
+                .companyTeams(token, ref)));
     }
 
     @QueryMapping
@@ -107,13 +107,13 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<List<TimeRecord>> upworkUserEarnings(final Token token,
+    public Mono<List<FinanceRecord>> upworkUserEarnings(final Token token,
                                                      @Argument final String from,
                                                      @Argument final String to,
                                                      @Argument final String ref
     ) {
         return wrapLogic(sink -> {
-            final List<TimeRecord> earnings = getUpworkSvc()
+            final List<FinanceRecord> earnings = getUpworkSvc()
                     .earningsForUser(
                             token,
                             LocalDate.parse(from, DatesUtil.formatterSQL()),
@@ -128,7 +128,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     public Mono<List<TimeRecord>> upworkCompanyTime(final Token token,
                                                     @Argument final String from,
                                                     @Argument final String to,
-                                                    @Argument("companyRef") final String company
+                                                    @Argument("companyId") final String company
     ) {
         return wrapLogic(sink -> {
             final List<TimeRecord> earnings = getUpworkSvc()
@@ -143,11 +143,27 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
+    public Mono<List<TimeRecord>> upworkUserTime(final Token token,
+                                                 @Argument final String from,
+                                                 @Argument final String to
+    ) {
+        return wrapLogic(sink -> {
+            final List<TimeRecord> earnings = getUpworkSvc()
+                    .timeByUser(
+                            token,
+                            LocalDate.parse(from, DatesUtil.formatterSQL()),
+                            LocalDate.parse(to, DatesUtil.formatterSQL())
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
     public Mono<List<TimeRecord>> upworkTeamTime(final Token token,
                                                  @Argument final String from,
                                                  @Argument final String to,
-                                                 @Argument("companyRef") final String company,
-                                                 @Argument("teamRef") final String team
+                                                 @Argument("companyId") final String company,
+                                                 @Argument("teamId") final String team
     ) {
         return wrapLogic(sink -> {
             final List<TimeRecord> earnings = getUpworkSvc()
@@ -166,8 +182,8 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     public Mono<List<TimeRecord>> upworkAgencyTime(final Token token,
                                                    @Argument final String from,
                                                    @Argument final String to,
-                                                   @Argument("companyRef") final String company,
-                                                   @Argument("agencyRef") final String agency
+                                                   @Argument("companyId") final String company,
+                                                   @Argument("agencyId") final String agency
     ) {
         return wrapLogic(sink -> {
             final List<TimeRecord> earnings = getUpworkSvc()

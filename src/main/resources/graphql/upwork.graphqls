@@ -10,8 +10,37 @@ type UpworkUser {
     is_provider: String
     first_name: String
     profile_key: String
+    profile: UpworkProfile
     has_contract: String
 }
+type UpworkProfile {
+    ciphertext: String
+    dev_ac_agencies: String
+    dev_adj_score: String
+    dev_adj_score_recent: String
+    dev_billed_assignments: String
+    dev_city: String
+    dev_country: String
+    dev_eng_skill: String
+    dev_groups: String
+    dev_is_affiliated: String
+    dev_last_activity: String
+    dev_last_worked: String
+    dev_last_worked_ts: String
+    dev_portfolio_items_count: String
+    dev_portrait: String
+    dev_portrait_100: String
+    dev_portrait_32: String
+    dev_portrait_50: String
+    dev_profile_title: String
+    dev_recno_ciphertext: String
+    dev_short_name: String
+    dev_timezone: String
+    dev_tot_feedback: String
+    dev_total_hours: String
+    dev_ui_profile_access: String
+}
+
 type UpworkCompany {
     name: String!
     owner_ciphertext: String

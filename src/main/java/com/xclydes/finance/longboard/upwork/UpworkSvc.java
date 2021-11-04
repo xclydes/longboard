@@ -1,6 +1,7 @@
 package com.xclydes.finance.longboard.upwork;
 
 import com.Upwork.api.OAuthClient;
+import com.Upwork.api.Routers.Jobs.Profile;
 import com.Upwork.api.Routers.Organization.Companies;
 import com.Upwork.api.Routers.Organization.Teams;
 import com.Upwork.api.Routers.Organization.Users;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.xclydes.finance.longboard.config.CacheConfig.*;
 
@@ -151,6 +153,33 @@ public class UpworkSvc {
                     }
                 });
         return Optional.ofNullable(user);
+    }
+
+    /**
+     * Gets the profile of the current user or one with the profileKey given if any
+     *
+     * @param token The access token to be used
+     * @return The user requested, if found
+     */
+    @Cacheable(cacheNames = {UPWORK_PROFILE})
+    public List<User.Profile> profile(final Token token, final String ... profileKey) {
+        // Filter the list
+        final String resolvedProfileKey = Stream.of(profileKey)
+                .filter(StringUtils::hasText)
+                .reduce((p,v) -> p +','+v)
+                .orElseThrow(() -> new IllegalArgumentException("At least one (1) valid profile key is required"));
+        // Initialize the user function
+        final Profile profileRoute = new Profile(getClientProvider().getClient(token));
+        try {
+            final JSONObject myInfoResponse = profileRoute.getSpecific(resolvedProfileKey);
+            // Check for errors
+            checkForException(myInfoResponse);
+            final JSONArray profilesJson = myInfoResponse.getJSONArray("profiles");
+            return fromJsonArray(profilesJson, User.Profile.class);
+        } catch (JSONException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -365,7 +394,7 @@ public class UpworkSvc {
      *                    Use Teams & Companies resource to get it.
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_FREELANCER_COMPANY})
     public List<FinanceRecord> billingsForFreelancerCompany(final Token token,
                                                          final LocalDate from,
                                                          final LocalDate to,
@@ -405,7 +434,7 @@ public class UpworkSvc {
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM})
-    public List<TimeRecord> earningsForFreelancerTeam(final Token token,
+    public List<FinanceRecord> earningsForFreelancerTeam(final Token token,
                                                       final LocalDate from,
                                                       final LocalDate to,
                                                       final String ref
@@ -413,9 +442,9 @@ public class UpworkSvc {
         // If a valid reference is not found
         final String resolvedRef = ValidationUtil.requires(ref,
                 StringUtils::hasText, "A valid freelancer/team reference is required");
-        return performTimeQuery(
+        return performFinancialQuery(
                 QueryBuilder
-                        .get(TimeReportFields)
+                        .get(FinanceReportFields)
                         .andWhere("date", ">=", from)
                         .andWhere("date", "<=", to)
                         .build(),
@@ -511,17 +540,17 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @param from  The start date to query
      * @param to    The end date to stop querying at
-     * @param ref   The reference of the company to be queried
+     * @param companyRef   The reference of the company to be queried
      * @return The list of earning records found
      */
     @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
     public List<FinanceRecord> earningsForBuyersCompany(final Token token,
                                                      final LocalDate from,
                                                      final LocalDate to,
-                                                     final String ref
+                                                     final String companyRef
     ) {
         // If a valid reference is not found
-        final String resolvedRef = ValidationUtil.requires(ref,
+        final String resolvedRef = ValidationUtil.requires(companyRef,
                 StringUtils::hasText, "A valid buyers/company reference is required");
         return performFinancialQuery(
                 QueryBuilder
@@ -798,21 +827,6 @@ public class UpworkSvc {
             );
     }
 
-    /**
-     * Performs a query to fetch accounting related activities from Upwork.
-     *
-     * @param query The query to be run
-     * @param exec The callback to perform the query execution and extract the appropriate result.
-     *             By result that means a typical report representation which can be mapped to a list of Accounting
-     *             records.
-     * @return The list of records found, if any.
-     * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
-     */
-    private List<FinanceRecord> performFinancialQuery(final String query,
-                                                      final Function<HashMap<String, String>, JSONObject> exec) {
-        return performQuery(query, FinanceRecord.class, exec);
-    }
-
     private Accounts getAccountsRoute(final Token token) {
         return new Accounts(getClientProvider().getClient(token));
     }
@@ -827,6 +841,21 @@ public class UpworkSvc {
 
     private Time getTimeRoute(final Token token) {
         return new Time(getClientProvider().getClient(token));
+    }
+
+    /**
+     * Performs a query to fetch accounting related activities from Upwork.
+     *
+     * @param query The query to be run
+     * @param exec The callback to perform the query execution and extract the appropriate result.
+     *             By result that means a typical report representation which can be mapped to a list of Accounting
+     *             records.
+     * @return The list of records found, if any.
+     * @see <a href="https://developers.upwork.com/?lang=node#reports_financial-reports-fields">Financial Reports</a>
+     */
+    private List<FinanceRecord> performFinancialQuery(final String query,
+                                                      final Function<HashMap<String, String>, JSONObject> exec) {
+        return performQuery(query, FinanceRecord.class, exec);
     }
 
     /**

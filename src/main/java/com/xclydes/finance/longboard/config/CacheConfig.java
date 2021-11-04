@@ -32,6 +32,7 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_APICLIENT = "upwork.api_client";
     public static final String UPWORK_ACCESSTOKEN = "upwork.token.access";
     public static final String UPWORK_USER = "upwork.user";
+    public static final String UPWORK_PROFILE = "upwork.profile";
     public static final String UPWORK_USER_BY_TEAM = "upwork.user.team";
     public static final String UPWORK_TEAMS = "upwork.teams";
     public static final String UPWORK_COMPANY = "upwork.company";
@@ -45,6 +46,7 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_ACCOUNTING_ENTITY = "upwork.accounting.entity";
     public static final String UPWORK_ACCOUNTING_USER = "upwork.accounting.user";
     public static final String UPWORK_BILLING_USER = "upwork.billing.user";
+    public static final String UPWORK_BILLINGS_FREELANCER_COMPANY = "upwork.billing.freelancer.company";
     public static final String UPWORK_BILLINGS_BUYER_TEAM = "upwork.billing.buyer.team";
     public static final String UPWORK_BILLINGS_BUYER_COMPANY = "upwork.billing.buyer.company";
     public static final String UPWORK_TIME_COMPANY = "upwork.time.company";
@@ -55,7 +57,8 @@ public class CacheConfig extends CachingConfigurerSupport {
 
     @Bean
     public CacheManager cacheManager() {
-        final ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
+        // TODO Use redis if it is configured
+        return new ConcurrentMapCacheManager(
                 WAVE_APICLIENT_REST, WAVE_APICLIENT_GRAPHQL, WAVE_OAUTH_URL,
                 WAVE_COUNTRIES, WAVE_BUSINESS, WAVE_BUSINESSES, WAVE_INVOICE, WAVE_INVOICES,
                 WAVE_ACCOUNT, WAVE_ACCOUNTS, WAVE_ACCESSTOKEN,
@@ -67,8 +70,6 @@ public class CacheConfig extends CachingConfigurerSupport {
                 UPWORK_EARNINGS_FREELANCER_TEAM, UPWORK_COMPANY_WORKDIARY, UPWORK_BILLING_USER,
                 UPWORK_TIME_TEAM
         );
-        // TODO Use redis if it is configured
-        return cacheManager;
     }
 
 }

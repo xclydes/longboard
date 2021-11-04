@@ -20,7 +20,13 @@ type Query {
     upworkUserEarnings(from: Date!, to: Date = "", userRef: String): [UpworkFinanceRecord]
     upworkEntityAccounting(ref: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
     upworkUserAccounting(ref: String, from: Date!, to: Date = ""): [UpworkFinanceRecord]
-    upworkUserBilling(userRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkUserBillings(userRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkFreelancerCompanyBillings(companyRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkFreelancerTeamEarnings(teamRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkBuyerTeamEarnings(teamRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkBuyerTeamBillings(teamRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkBuyerCompanyEarnings(companyRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
+    upworkBuyerCompanyBillings(companyRef: String!, from: Date!, to: Date = ""): [UpworkFinanceRecord]
 
     # Wave
     waveLogin(state: String!): RequestDetails

@@ -233,7 +233,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Mono<List<FinanceRecord>> upworkUserBilling(final Token token,
+    public Mono<List<FinanceRecord>> upworkUserBillings(final Token token,
                                                           @Argument("userRef") final String ref,
                                                           @Argument("from") final LocalDate from,
                                                           @Argument("to") final LocalDate to
@@ -241,6 +241,114 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
         return wrapLogic(sink -> {
             final List<FinanceRecord> earnings = getUpworkSvc()
                     .billingsForUser(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkFreelancerCompanyBillings(final Token token,
+                                                          @Argument("companyRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .billingsForFreelancerCompany(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkFreelancerTeamEarnings(final Token token,
+                                                          @Argument("teamRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .earningsForFreelancerTeam(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkBuyerTeamEarnings(final Token token,
+                                                          @Argument("teamRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .earningsForBuyersTeam(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkBuyerTeamBillings(final Token token,
+                                                          @Argument("teamRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .billingsForBuyersTeam(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkBuyerCompanyEarnings(final Token token,
+                                                          @Argument("companyRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .earningsForBuyersCompany(
+                            token,
+                            from,
+                            to,
+                            ref
+                    );
+            sink.success(earnings);
+        });
+    }
+
+    @QueryMapping
+    public Mono<List<FinanceRecord>> upworkBuyerCompanyBillings(final Token token,
+                                                          @Argument("companyRef") final String ref,
+                                                          @Argument("from") final LocalDate from,
+                                                          @Argument("to") final LocalDate to
+    ) {
+        return wrapLogic(sink -> {
+            final List<FinanceRecord> earnings = getUpworkSvc()
+                    .billingsForBuyersCompany(
                             token,
                             from,
                             to,

@@ -865,7 +865,7 @@ public class UpworkSvc {
         final int page = pageIn != null ? pageIn : 1;
         final int pageSize = pageSizeIn != null ? pageSizeIn : 10;
         // Upwork expects offset,size
-        params.put("page", String.format("%d,%d", Math.max(0, page - 1) * pageSize, pageSize));
+        params.put("page", String.format("%d;%d", Math.max(0, page - 1) * pageSize, pageSize));
         try {
             final Engagements engagementRoute = new Engagements(getClientProvider().getClient(token));
             final JSONObject engagementsListResponse = engagementRoute.getList(params);

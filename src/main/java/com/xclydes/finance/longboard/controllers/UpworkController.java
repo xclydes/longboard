@@ -2,16 +2,15 @@ package com.xclydes.finance.longboard.controllers;
 
 import com.Upwork.api.OAuthClient;
 import com.xclydes.finance.longboard.apis.IClientProvider;
+import com.xclydes.finance.longboard.models.DataPage;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.upwork.UpworkSvc;
 import com.xclydes.finance.longboard.upwork.models.*;
-import com.xclydes.finance.longboard.util.DatesUtil;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.SchedulingTaskExecutor;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -62,6 +61,18 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     public Mono<List<Team>> upworkTeams(final Token token) {
         return wrapLogic(sink -> sink.success(getUpworkSvc()
                 .teams(token)));
+    }
+
+    @QueryMapping
+    public Mono<DataPage<EngagementRecord>> upworkEngagements(final Token token,
+                                                              @Argument("from") final LocalDate from,
+                                                              @Argument("to") LocalDate to,
+                                                              @Argument("page") final Integer pageIn,
+                                                              @Argument("pageSize") final Integer pageSizeIn,
+                                                              @Argument("status") final String status
+                                                              ) {
+        return wrapLogic(sink -> sink.success(getUpworkSvc()
+                .engagements(token, from, to, pageIn, pageSizeIn, status)));
     }
 
     @QueryMapping

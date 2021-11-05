@@ -12,6 +12,7 @@ type Query {
     upworkTeams(ref: String): [UpworkTeam]
     upworkTeamUsers(teamRef: String!): [UpworkUser]
 
+    upworkEngagements(from: Date, to: Date, page: Int, pageSize: Int, status: String): UpworkEngagementPage
     upworkUserTime(from: Date!, to: Date = ""): [UpworkTimeRecord]
     upworkTeamTime(from: Date!, to: Date = "", companyId: String!, teamId: String!): [UpworkTimeRecord]
     upworkAgencyTime(from: Date!, to: Date = "", companyId: String!, agencyId: String!): [UpworkTimeRecord]

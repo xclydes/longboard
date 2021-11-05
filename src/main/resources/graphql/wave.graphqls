@@ -14,7 +14,7 @@ type WaveBusiness {
 
 type BusinessPage {
     pagination: PageInfo!
-    fragment: [WaveBusiness]
+    page: [WaveBusiness]
 }
 
 

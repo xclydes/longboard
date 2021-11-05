@@ -1,7 +1,7 @@
 package com.xclydes.finance.longboard.controllers;
 
 import com.apollographql.apollo.ApolloClient;
-import com.xclydes.finance.longboard.models.FragmentPage;
+import com.xclydes.finance.longboard.models.DataPage;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.wave.GetUserQuery;
 import com.xclydes.finance.longboard.wave.WaveSvc;
@@ -33,9 +33,9 @@ public class WaveController extends AbsAPIController<ApolloClient> {
     }
 
     @QueryMapping
-    public Mono<FragmentPage<BusinessFragment>> waveBusinesses(final Token token,
-                                                               @Argument final Integer pageIn,
-                                                               @Argument final Integer pageSizeIn) {
+    public Mono<DataPage<BusinessFragment>> waveBusinesses(final Token token,
+                                                           @Argument("page") final Integer pageIn,
+                                                           @Argument("pageSize") final Integer pageSizeIn) {
         // Transform the parameters to their defaults
         final Integer page = pageIn != null ? pageIn : 1;
         final Integer pageSize = pageSizeIn != null ? pageSizeIn : 99;

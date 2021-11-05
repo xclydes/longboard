@@ -154,4 +154,52 @@ type UpworkSnapshot {
     task: UpworkSnapshotTask
     screenshots: [UpworkScreenshot]
 }
-
+type UpworkEngagementPage {
+    pagination: PageInfo!
+    page: [UpworkEngagementRecord]
+}
+type UpworkEngagementRecord {
+    engagement_start_date: String
+    job_ref_ciphertext: String
+    status: String
+    provider__reference: String
+    engagement_job_type: String
+    offer_id: String
+    job__title: String
+    cj_job_application_uid: String
+    provider_team__id: String
+    job_application_ref: String
+    dev_recno_ciphertext: String
+    reference: String
+    parent_reference: String
+    active_milestone: String
+    provider__id: String
+    engagement_title: String
+    created_time: String
+    engagement_end_date: String
+    provider_team__reference: String
+    engagement_start_ts: String
+    buyer_team__reference: String
+    buyer_team__id: String
+    portrait_url: String
+    category_uid: String
+    category_name: String
+    hourly_charge_rate: Float
+    weekly_salary_charge_amount: Float
+    fixed_charge_amount_agreed: Float
+    fixed_price_upfront_payment: Float
+    weekly_stipend_hours: Int
+    weekly_hours_limit: Int
+    engagement_end_ts: String
+    is_suspended: String
+    is_autopaused: String
+    is_paused: String
+    feedback: UpworkFeedback
+}
+type UpworkFeedback {
+    feedback_for_provider: UpworkFeedbackScore
+    feedback_for_buyer: UpworkFeedbackScore
+}
+type UpworkFeedbackScore {
+    score: String
+}

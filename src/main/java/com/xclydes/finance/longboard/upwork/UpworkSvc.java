@@ -1,6 +1,8 @@
 package com.xclydes.finance.longboard.upwork;
 
 import com.Upwork.api.OAuthClient;
+import com.Upwork.api.Routers.Activities.Engagement;
+import com.Upwork.api.Routers.Hr.Engagements;
 import com.Upwork.api.Routers.Jobs.Profile;
 import com.Upwork.api.Routers.Organization.Companies;
 import com.Upwork.api.Routers.Organization.Teams;
@@ -10,6 +12,8 @@ import com.Upwork.api.Routers.Reports.Finance.Billings;
 import com.Upwork.api.Routers.Reports.Finance.Earnings;
 import com.Upwork.api.Routers.Reports.Time;
 import com.Upwork.api.Routers.Workdiary;
+import com.xclydes.finance.longboard.models.DataPage;
+import com.xclydes.finance.longboard.models.Pagination;
 import com.xclydes.finance.longboard.upwork.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +38,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Array;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -827,6 +832,68 @@ public class UpworkSvc {
             );
     }
 
+    /**
+     * Gets engagement records
+     *
+     * @param token The access token to be used
+     * @param from  The start date to query
+     * @param to    The end date to stop querying at
+     * @return The list of account records found
+     */
+    @Cacheable(cacheNames = {UPWORK_ENGAGEMENTS})
+    public DataPage<EngagementRecord> engagements(final Token token,
+                                                  final LocalDate from,
+                                                  final LocalDate to,
+                                                  final Integer pageIn,
+                                                  final Integer pageSizeIn,
+                                                  final String status) {
+        // Gather the parameters
+        final HashMap<String, String> params = new HashMap<>();
+        // If there is a from
+        if(from != null) {
+            params.put("created_time_from", dateFormatSQL.format(from.atStartOfDay()));
+        }
+        // If there is a to
+        if(to != null) {
+            params.put("created_time_to", dateFormatSQL.format(to.atTime(23, 59, 59)));
+        }
+        // If there is a status filter
+        if(StringUtils.hasText(status)) {
+            params.put("status", status);
+        }
+        // Resolve some sensible defaults for the paging
+        final int page = pageIn != null ? pageIn : 1;
+        final int pageSize = pageSizeIn != null ? pageSizeIn : 10;
+        // Upwork expects offset,size
+        params.put("page", String.format("%d,%d", Math.max(0, page - 1) * pageSize, pageSize));
+        try {
+            final Engagements engagementRoute = new Engagements(getClientProvider().getClient(token));
+            final JSONObject engagementsListResponse = engagementRoute.getList(params);
+            // Check for errors
+            checkForException(engagementsListResponse);
+            final JSONObject engagementsResponseObj = engagementsListResponse.getJSONObject("engagements");
+            final JSONArray engagementsArr = engagementsResponseObj.getJSONArray("engagement");
+            // Replace all empty string with null
+            JsonUtil.jsonArrayToList(engagementsArr).forEach(UpworkSvc::treatEmptyStringsAsNulls);
+            // Convert to a proper list of records
+            final List<EngagementRecord> engagementRecordList = fromJsonArray(engagementsArr, EngagementRecord.class);
+            //Get the paging data
+            final JSONObject engagmentLister = engagementsResponseObj.getJSONObject("lister");
+            final double totalEngagements = engagmentLister.getDouble("total_count");
+            // Convert the page data
+            final Pagination pagination = new Pagination(
+                    pageSize,
+                    page,
+                    Double.valueOf(Math.ceil(totalEngagements / pageSize)).intValue(),
+                    Double.valueOf(totalEngagements).intValue()
+            );
+            return new DataPage<>(pagination, engagementRecordList);
+        } catch (JSONException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
     private Accounts getAccountsRoute(final Token token) {
         return new Accounts(getClientProvider().getClient(token));
     }
@@ -957,6 +1024,23 @@ public class UpworkSvc {
         } catch (JsonProcessingException jEx) {
             throw new RuntimeException(jEx);
         }
+    }
+
+    private static Collection<String> treatEmptyStringsAsNulls(final JSONObject obj) {
+        final Collection<String> removed = new ArrayList<>();
+        // Process the keys
+        final List<String> keys = new ArrayList<>();
+        obj.keys().forEachRemaining(k -> keys.add(String.valueOf(k)));
+        keys.forEach((key) -> {
+            try {
+                final Object value = obj.get(key);
+                if( value instanceof String && !StringUtils.hasText((String) value)) {
+                    obj.remove(key);
+                    removed.add(key);
+                }
+            } catch (JSONException e) {}
+        });
+        return removed;
     }
 
     /**

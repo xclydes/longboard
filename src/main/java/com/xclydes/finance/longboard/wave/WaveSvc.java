@@ -1,26 +1,22 @@
 package com.xclydes.finance.longboard.wave;
 
-import com.Upwork.api.OAuthClient;
 import com.apollographql.apollo.ApolloClient;
 import com.apollographql.apollo.api.Input;
 import com.apollographql.apollo.exception.ApolloException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xclydes.finance.longboard.apis.IClientProvider;
-import com.xclydes.finance.longboard.models.FragmentPage;
+import com.xclydes.finance.longboard.models.DataPage;
 import com.xclydes.finance.longboard.models.Pagination;
 import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.util.ArrayUtil;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.GraphQLUtil;
-import com.xclydes.finance.longboard.wave.*;
 import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
 import com.xclydes.finance.longboard.wave.fragment.InvoiceFragment;
 import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -248,7 +244,7 @@ public class WaveSvc {
      * @return The set matching the configuration specified
      */
     @Cacheable(cacheNames = {WAVE_BUSINESSES})
-    public Mono<FragmentPage<BusinessFragment>> businesses(final Token token, final Integer page, final Integer pageSize) {
+    public Mono<DataPage<BusinessFragment>> businesses(final Token token, final Integer page, final Integer pageSize) {
         return processQuery(
                 provideGraphQLClient(token),
                 new BusinessListQuery(Input.fromNullable(page), Input.fromNullable(pageSize)),
@@ -270,7 +266,7 @@ public class WaveSvc {
                             .map(BusinessListQuery.Businesses::pageInfo)
                             .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
                             .orElse(Pagination.UNKNOWN);
-                    return new FragmentPage<>(pagination, businessFragments);
+                    return new DataPage<>(pagination, businessFragments);
                 }
         );
     }
@@ -289,7 +285,7 @@ public class WaveSvc {
     }
 
     @Cacheable(cacheNames = {WAVE_INVOICES})
-    public Mono<FragmentPage<InvoiceFragment>> invoices(
+    public Mono<DataPage<InvoiceFragment>> invoices(
             final Token token,
             final String businessID ,
             final LocalDate from,
@@ -331,7 +327,7 @@ public class WaveSvc {
                             .map(GetBusinessInvoicesQuery.Invoices::pageInfo)
                             .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
                             .orElse(Pagination.UNKNOWN);
-                    return new FragmentPage<>(pagination, businessFragments);
+                    return new DataPage<>(pagination, businessFragments);
                 }
         );
     }

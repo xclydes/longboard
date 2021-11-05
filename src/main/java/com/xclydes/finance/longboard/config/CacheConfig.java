@@ -35,6 +35,7 @@ public class CacheConfig extends CachingConfigurerSupport {
     public static final String UPWORK_PROFILE = "upwork.profile";
     public static final String UPWORK_USER_BY_TEAM = "upwork.user.team";
     public static final String UPWORK_TEAMS = "upwork.teams";
+    public static final String UPWORK_ENGAGEMENTS = "upwork.engagements";
     public static final String UPWORK_COMPANY = "upwork.company";
     public static final String UPWORK_COMPANY_TEAMS = "upwork.company.teams";
     public static final String UPWORK_COMPANY_WORKDIARY = "upwork.company.diary";
@@ -69,7 +70,7 @@ public class CacheConfig extends CachingConfigurerSupport {
                 UPWORK_ACCOUNTING_ENTITY, UPWORK_ACCOUNTING_USER, UPWORK_EARNINGS_FREELANCER_COMPANY,
                 UPWORK_EARNINGS_FREELANCER_TEAM, UPWORK_COMPANY_WORKDIARY, UPWORK_BILLING_USER,
                 UPWORK_TIME_TEAM, UPWORK_BILLINGS_FREELANCER_COMPANY, UPWORK_BILLINGS_BUYER_TEAM,
-                UPWORK_BILLINGS_BUYER_COMPANY, UPWORK_TIME_USER
+                UPWORK_BILLINGS_BUYER_COMPANY, UPWORK_TIME_USER, UPWORK_ENGAGEMENTS
         );
     }
 

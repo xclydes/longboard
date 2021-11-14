@@ -1,0 +1,312 @@
+image: ${XCI_DOCKER_REGISTRY}/openjdk:11-jdk
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - test
+  - package
+  - deploy
+  - release
+
+# Cache the Maven repository so that each job does not have to download it.
+cache:
+  key: mavenrepo-$CI_PROJECT_ID-$CI_COMMIT_REF_NAME
+  paths:
+    - ./x-ci/.m2/repository/
+
+.setup_xci : &setup_xci
+  # Set the gradle root path
+  - export GRADLE_USER_HOME=`pwd`/x-ci/.gradle
+  #Set Gradle wrapper permissions
+  - chmod +x gradlew #https://stackoverflow.com/questions/17668265/gradlew-permission-denied
+
+.install_sentry_cli: &install_sentry
+  - curl -sL https://sentry.io/get-cli/ | bash
+  - sentry-cli --help
+
+.install_gitlab_release: &install_gitlab_release
+  - curl --location --output /usr/local/bin/release-cli "https://release-cli-downloads.s3.amazonaws.com/latest/release-cli-linux-amd64"
+  - chmod +x /usr/local/bin/release-cli
+  - release-cli -v
+
+.create_release: &create_release
+  - export SENTRY_RELEASE_URL="${SENTRY_URL}/organizations/${SENTRY_ORG}/releases/${SENTRY_RELEASE}"
+  # Generate a changelog file
+  - |
+    cat > "changelog.v${VERSION_TAG}.md" <<- EOM
+    *Branch*: [${CI_COMMIT_BRANCH}](${CI_PROJECT_URL}/-/tree/${CI_COMMIT_REF_SLUG})
+
+    *Tag*: v${VERSION_TAG}
+
+    *Pipeline*: [${CI_PIPELINE_ID}](${CI_PIPELINE_URL})
+
+    *Job*: [${CI_JOB_ID}](${CI_JOB_URL})
+    EOM
+  # Create the Sentry Release
+  - sentry-cli releases new -p "${SENTRY_PROJECT}" "${SENTRY_RELEASE}"
+  - sentry-cli releases set-commits "${SENTRY_RELEASE}" --auto --ignore-missing
+  - sentry-cli releases finalize "${SENTRY_RELEASE}"
+  # Create the Gitlab Release
+  - |
+    release-cli create \
+      --name "Pick3 API v${VERSION_TAG}" \
+      --description "./changelog.v${VERSION_TAG}.md" \
+      --assets-link "{\"name\":\"Sentry Release\",\"url\":\"${SENTRY_RELEASE_URL}\"}" \
+      --tag-name "v${VERSION_TAG}"
+
+.sentry_deploy: &sentry_deploy
+  - sentry-cli releases deploys "${SENTRY_RELEASE}" new -e "${SENTRY_ENVIRONMENT}"
+
+.install_yq: &install_yq
+  - wget -q -O /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_BIN_VERSION}/yq_linux_amd64"
+  - chmod +x /usr/local/bin/yq
+  - yq -V
+
+.install_helm: &install_helm
+  - wget -q -O helm.tar.gz "https://get.helm.sh/helm-${HELM_BIN_VERSION}-linux-amd64.tar.gz"
+  - tar -zxf helm.tar.gz
+  - mv linux-amd64/helm /usr/local/bin/helm
+  - chmod +x /usr/local/bin/helm
+  - rm -rf linux-amd64/helm helm.tar.gz
+  - helm version
+
+.install_kubectl: &install_kubectl
+  - wget -q -O /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_BIN_VERSION}/bin/linux/amd64/kubectl"
+  - wget -q -O /tmp/kubectl.sha256 "https://dl.k8s.io/${KUBECTL_BIN_VERSION}/bin/linux/amd64/kubectl.sha256"
+  - echo "$(</tmp/kubectl.sha256) /tmp/kubectl" | sha256sum --check
+  - install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+  - kubectl version --client
+
+.kubeconfig_internal: &kubeconfig_internal
+  # Update the KUBECONFIG
+  - echo "Editing ${KUBECONFIG}"
+  - yq --inplace eval "(.clusters[0].cluster.server=\"${CI_KUBE_API_INTERNAL:-'https://kubernetes.default'}\")" "${KUBECONFIG}"
+  - cat ${KUBECONFIG}
+
+.helm_deploy: &helm_deploy
+  - helm repo add "xci-helm" "${XCI_HELM_REPO_BASE}" --username "${XCI_MAVEN_USER}" --password "${XCI_MAVEN_PASSWORD}"
+  - helm repo update
+  - helm -n "${K8S_NAMESPACE}" list --date --max 10 --filter=${HELM_RELEASE_NAME}
+  - HELM_OPTS="${HELM_OPTS} --namespace=${K8S_NAMESPACE}"
+  # The specific chart version to be installed
+  - HELM_OPTS="${HELM_OPTS} --version=${VERSION_TAG}"
+  - HELM_OPTS="${HELM_OPTS} --install --cleanup-on-fail --debug"
+  - HELM_OPTS="${HELM_OPTS} --values ${HELM_VALUE_OVERRIDES}"
+  - echo "[CMD] helm upgrade ${HELM_RELEASE_NAME} "xci-helm/${HELM_CHART_NAME}" ${HELM_OPTS}"
+  - helm upgrade ${HELM_RELEASE_NAME} "xci-helm/${HELM_CHART_NAME}" ${HELM_OPTS}
+  - helm -n "${K8S_NAMESPACE}" list --date --max 10 --filter=${HELM_RELEASE_NAME}
+
+before_script:
+  - *setup_xci
+
+#services:
+#  - postgres:12.2-alpine
+#  - redis:latest
+variables:
+  BUILD_MAJOR: 1
+  BUILD_MINOR: 0
+  BUILD_PATCH: $CI_PIPELINE_ID
+  VERSION_TAG: 1.0.$CI_PIPELINE_ID
+  DEPLOY_DOMAIN: devops.xclydes.cloud
+#  POSTGRES_DB: pick3
+#  POSTGRES_USER: pick3
+#  POSTGRES_PASSWORD: pick3
+#  POSTGRES_HOST_AUTH_METHOD: trust
+  HELM_CHART_DIR: "longboard-api"
+  HELM_CHART_NAME: "longboard-api"
+  PROJECT_NAME: "longboard-api"
+  YQ_BIN_VERSION: "v4.5.1"
+  HELM_BIN_VERSION: "v3.5.2"
+  KUBECTL_BIN_VERSION: "v1.20.3"
+#  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres/pick3"
+#  SPRING_REDIS_HOST: "redis"
+  # === Sentry ===
+  # Provided via Gitlab
+  # - SENTRY_URL
+  # - SENTRY_ORG
+  # - SENTRY_AUTH_TOKEN
+  SENTRY_PROJECT: "longboard-api"
+  # Format should match ${SENTRY_PROJECT}@${VERSION_TAG}
+  SENTRY_RELEASE: "longboard-api@1.0.$CI_PIPELINE_ID"
+
+gradle check:
+  stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == ""'
+      when: never
+    - when: always
+  coverage: '/Total.*?([0-9]{1,3})%/'
+  variables:
+    LOCAL_PROPERTIES: "local.properties"
+  before_script:
+    - *setup_xci
+  script:
+    # Run the gradle check process
+    - ./gradlew check
+    - cat build/reports/jacoco/test/html/index.html | grep -o -m 1 '<tfoot>.*</tfoot>'
+  artifacts:
+    paths:
+      - build/reports/jacoco/test/html
+    reports:
+      junit:
+        - build/test-results/test/TEST-*.xml
+
+lint helm:
+  stage: test
+  cache: {}
+  before_script:
+    - *install_helm
+  script:
+    # Lint the charts
+    - helm lint $HELM_CHART_DIR
+
+build image:
+  stage: package
+  rules:
+    - when: on_success
+  needs:
+    - "gradle check"
+  script:
+    # Define the jib options
+    - JIB_CLI_OPTS="-Djib.to.auth.username=${CI_REGISTRY_USER} -Djib.to.auth.password=${CI_REGISTRY_PASSWORD}"
+    - JIB_CLI_OPTS="$JIB_CLI_OPTS -Djib.to.image=${CI_REGISTRY_IMAGE}:${VERSION_TAG}"
+    - JIB_CLI_OPTS="$JIB_CLI_OPTS -Djib.to.tags=${VERSION_TAG},${CI_COMMIT_REF_SLUG}"
+    # Write the version file
+    - mkdir -p "src/main/jib" && echo "${VERSION_TAG}" > "src/main/jib/BUILD"
+    # Run the gradle publish process
+    - ./gradlew $GRADLE_CLI_OPTS jib $JIB_CLI_OPTS
+
+helm:
+  stage: package
+  needs:
+    - "lint helm"
+  before_script:
+    - *install_yq
+    - *install_helm
+  script:
+    # Customize the values.yaml
+    - yq eval --inplace "(.image.tag = \"${VERSION_TAG}\") | (.image.repository = \"${CI_REGISTRY_IMAGE}\")" "${HELM_CHART_DIR}/values.yaml"
+    - yq eval --inplace "(.config.\"sentry.release\" = \"${SENTRY_RELEASE}\")" "${HELM_CHART_DIR}/values.yaml"
+    # Inject public registry url
+    - sed -i "s/$CI_REGISTRY/$XCI_DOCKER_REGISTRY_PUBLIC/g" "${HELM_CHART_DIR}/values.yaml"
+    # Set .Chart.Version
+    - HELM_OPTS="--version=${VERSION_TAG}"
+    # Set .Chat.appVersion
+    - HELM_OPTS="$HELM_OPTS --app-version=${VERSION_TAG}"
+    # package chart with helm command line tool
+    - helm package $HELM_CHART_DIR $HELM_OPTS
+    # find the file created
+    - HELM_CHART_PKG=$(ls -1 *.tgz)
+    # push chart to helm repository
+    - curl -s --user $XCI_MAVEN_USER:$XCI_MAVEN_PASSWORD -n $XCI_HELM_REPO_BASE --upload-file $HELM_CHART_PKG
+
+review:
+  stage: deploy
+  needs:
+    - "helm"
+    - "jib"
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "master" && $CI_COMMIT_BRANCH != "development"'
+  variables:
+    K8S_NAMESPACE: "devops"
+  environment:
+    name: review/${CI_COMMIT_REF_NAME}
+    url: https://${CI_ENVIRONMENT_SLUG}.${DEPLOY_DOMAIN}
+    kubernetes:
+      namespace: $K8S_NAMESPACE
+  before_script:
+    - *install_yq
+    - *install_helm
+    - *install_kubectl
+    - *kubeconfig_internal
+  script:
+    - HELM_RELEASE_NAME="${PROJECT_NAME}-${CI_ENVIRONMENT_SLUG}"
+    - HELM_VALUE_OVERRIDES="$(date +%Y%m%d%H%M%S).yaml"
+    - yq --null-input eval "(.image.repository=\"${CI_REGISTRY_IMAGE}\") | (.ingress.hosts[0].host=\"${CI_ENVIRONMENT_SLUG}.${DEPLOY_DOMAIN}\") | (.ingress.hosts[0].paths=[\"/\"]) | (.ingress.secretName=\"\")" > "${HELM_VALUE_OVERRIDES}"
+    #- yq --inplace eval "(.config.\"spring.datasource.url\"=\"jdbc:postgresql://postgres.devops/pick3review\") | (.config.\"spring.redis.host\"=\"redis.devops\")" "${HELM_VALUE_OVERRIDES}"
+    - yq --inplace eval "(.config.\"sentry.environment\"=\"${CI_ENVIRONMENT_SLUG}\") | (.config.\"sentry.release\" = \"${SENTRY_RELEASE}\") | (.config.\"sentry.debug\"=\"true\") | (.config.\"sentry.traces-sample-rate\"=\"1.0\")" "${HELM_VALUE_OVERRIDES}"
+    # Inject public registry url
+    - sed -i "s/$CI_REGISTRY/$XCI_DOCKER_REGISTRY/g" "${HELM_VALUE_OVERRIDES}"
+    - cat "${HELM_VALUE_OVERRIDES}"
+    - *helm_deploy
+
+staging:
+  stage: deploy
+  needs:
+    - "helm"
+    - "jib"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+  variables:
+    K8S_NAMESPACE: "devops"
+    HELM_RELEASE_NAME: "${PROJECT_NAME}"
+  environment:
+    name: staging
+    url: https://${PROJECT_NAME}.${DEPLOY_DOMAIN}
+    kubernetes:
+      namespace: $K8S_NAMESPACE
+  before_script:
+    - *install_yq
+    - *install_helm
+    - *install_kubectl
+    - *kubeconfig_internal
+  script:
+    - HELM_VALUE_OVERRIDES="$(date +%Y%m%d%H%M%S).yaml"
+    - yq --null-input eval "(.image.repository=\"${CI_REGISTRY_IMAGE}\") | (.ingress.hosts[0].host=\"${PROJECT_NAME}.${DEPLOY_DOMAIN}\") | (.ingress.hosts[0].paths=[\"/\"]) | (.ingress.secretName=\"\")" > "${HELM_VALUE_OVERRIDES}"
+    #- yq --inplace eval "(.config.\"spring.datasource.url\"=\"jdbc:postgresql://postgres.devops/pick3\") | (.config.\"spring.redis.host\"=\"redis.devops\")" "${HELM_VALUE_OVERRIDES}"
+    - yq --inplace eval "(.config.\"sentry.environment\"=\"${CI_ENVIRONMENT_SLUG}\") | (.config.\"sentry.release\" = \"${SENTRY_RELEASE}\") | (.config.\"sentry.debug\"=\"true\") | (.config.\"sentry.traces-sample-rate\"=\"1.0\")" "${HELM_VALUE_OVERRIDES}"
+    # Inject public registry url
+    - sed -i "s/$CI_REGISTRY/$XCI_DOCKER_REGISTRY/g" "${HELM_VALUE_OVERRIDES}"
+    - cat "${HELM_VALUE_OVERRIDES}"
+    - *helm_deploy
+
+production:
+  stage: deploy
+  needs:
+    - "helm"
+    - "jib"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: manual
+  variables:
+    K8S_NAMESPACE: "xclydes"
+    HELM_RELEASE_NAME: "${PROJECT_NAME}"
+  environment:
+    name: production
+    url: https://${PROJECT_NAME}.xclydes.com
+    kubernetes:
+      namespace: $K8S_NAMESPACE
+  before_script:
+    - *install_helm
+    - *install_kubectl
+  script:
+    - HELM_VALUE_OVERRIDES="$(date +%Y%m%d%H%M%S).yaml"
+    - yq --inplace eval "(.config.\"sentry.environment\"=\"${CI_ENVIRONMENT_SLUG}\") | (.config.\"sentry.release\" = \"${SENTRY_RELEASE}\")" "${HELM_VALUE_OVERRIDES}"
+    - cat "${HELM_VALUE_OVERRIDES}"
+    - *helm_deploy
+
+release:
+  stage: release
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: on_success
+      variables:
+        SENTRY_ENVIRONMENT: "production"
+    - if: '$CI_COMMIT_BRANCH == "development"'
+      when: on_success
+      variables:
+        SENTRY_ENVIRONMENT: "staging"
+  before_script:
+    - *install_sentry
+    - *install_gitlab_release
+  script:
+    - *create_release
+    - *sentry_deploy
+

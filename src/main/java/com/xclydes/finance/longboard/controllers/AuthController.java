@@ -35,32 +35,36 @@ public class AuthController {
     }
 
     @QueryMapping
-    public Mono<RequestToken> upworkLogin() {
-        return Mono.just(getUpworkSvc().startLogin());
+    public Mono<RequestToken> upworkLogin(@Argument("state") final String state) {
+        return Mono.just(getUpworkSvc().startLogin(state));
     }
 
     @QueryMapping
-    public CorePublisher<Token> upworkAccessToken(@Argument final String verifier,
-                                                  @Argument final Token token) {
-        return Mono.just(getUpworkSvc().getAccessToken(token, verifier));
+    public CorePublisher<Token> upworkAccessToken(@Argument("verifier") final String verifier) {
+        return Mono.just(getUpworkSvc().getAccessToken(verifier));
     }
 
     @QueryMapping
-    public CorePublisher<RequestToken> waveLogin(@Argument final String state) {
+    public CorePublisher<Token> upworkRefreshToken(@Argument("refresh") final String refreshCode) {
+        return Mono.just(getUpworkSvc().getRefreshedAccessToken(refreshCode));
+    }
+
+    @QueryMapping
+    public CorePublisher<RequestToken> waveLogin(@Argument("state") final String state) {
         return getWaveSvc().getLoginUrl(state);
     }
 
     @QueryMapping
-    public CorePublisher<Token> waveAccessToken(@Argument final String verifier) {
+    public CorePublisher<Token> waveAccessToken(@Argument("verifier") final String verifier) {
         return getWaveSvc().getAccessToken(verifier);
     }
 
     @QueryMapping
-    public CorePublisher<Token> waveRefreshToken(@Argument final String refreshCode) {
+    public CorePublisher<Token> waveRefreshToken(@Argument("refresh") final String refreshCode) {
         return getWaveSvc().getRefreshedAccessToken(refreshCode);
     }
 
-    @GetMapping("/auth/wave/callback")
+    @GetMapping("/auth/oauth2/callback")
     public CorePublisher<ResponseEntity<String>> waveCallback(@RequestParam("code") String code) {
         return Mono.just(ResponseEntity.ok("Your verifier is " + code));
     }

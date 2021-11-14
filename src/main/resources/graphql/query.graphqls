@@ -2,8 +2,9 @@ type Query {
     # Common
 
     # Upwork
-    upworkLogin: RequestDetails,
-    upworkAccessToken(verifier: String!, token: TokenInput!): AccessToken
+    upworkLogin(state: String!): RequestDetails,
+    upworkAccessToken(verifier: String!): AccessToken
+    upworkRefreshToken(refresh: String!): AccessToken
 
     upworkUser(ref: String): UpworkUser
     upworkCompanies(ref: String): [UpworkCompany]

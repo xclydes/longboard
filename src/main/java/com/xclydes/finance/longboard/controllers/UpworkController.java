@@ -102,6 +102,7 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
                             task.get().forEach(sink::next);
                         } catch (Exception e) {
                             // TODO What about this?
+                            sink.error(e);
                         }
                     });
             // That's all

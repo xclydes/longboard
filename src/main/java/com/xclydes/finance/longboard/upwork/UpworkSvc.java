@@ -32,7 +32,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -1125,7 +1124,7 @@ public class UpworkSvc {
      * @param jsonResponse The response to be checked
      * @throws RuntimeException If any errors are discovered
      */
-    private static void checkForException(final JSONObject jsonResponse) throws RuntimeException {
+    private void checkForException(final JSONObject jsonResponse) throws RuntimeException {
         JSONObject errorObject = null;
         try {
             // If the response has an error
@@ -1143,26 +1142,24 @@ public class UpworkSvc {
             // If an error was set
             if (errorObject != null) {
                 // Build the message
-                final StringBuilder messageBldr = new StringBuilder();
-                final String reason = errorObject.optString("reason");
-                // If there is a valid reason
-                if (StringUtils.hasText(reason)) {
-                    // Add it to the message
-                    messageBldr.append('[').append(reason).append(']');
-                }
-                final String message = errorObject.optString("message");
-                // If there is a valid message
-                if (StringUtils.hasText(message)) {
-                    // If there was content
-                    if (messageBldr.length() > 0) {
-                        // Add a space
-                        messageBldr.append(' ');
-                    }
-                    // Add it to the message
-                    messageBldr.append(message);
-                }
+                //final StringBuilder messageBldr = new StringBuilder("[Upwork] ");
+                final ObjectNode objectNode = getObjectMapper().createObjectNode();
+                // Indicates its from upwork
+                objectNode.put("origin", "Upwork");
+                // Add the reason if present
+                Optional.ofNullable(errorObject.optString("reason"))
+                        .filter(StringUtils::hasText)
+                        .ifPresent(reason -> objectNode.put("reason", reason));
+                // Add the code if present
+                Optional.ofNullable(errorObject.optString("code"))
+                        .filter(StringUtils::hasText)
+                        .ifPresent(code -> objectNode.put("code", code));
+                // Add the message if present
+                Optional.ofNullable(errorObject.optString("message"))
+                        .filter(StringUtils::hasText)
+                        .ifPresent(message -> objectNode.put("message", message));
                 // Throw it as an exception
-                throw new RuntimeException(messageBldr.toString());
+                throw new RuntimeException(objectNode.toString());
             }
         } catch (JSONException jsonException) {
             log.error(jsonException.getMessage(), jsonException);

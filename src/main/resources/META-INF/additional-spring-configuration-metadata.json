@@ -51,6 +51,16 @@
       "description": "The callback URL to be supplied to the UpWork OAuth API, if any."
     },
     {
+      "name": "longboard.upwork.client.timeout.connect",
+      "type": "java.lang.Integer",
+      "description": "The connect timeout to be used in milliseconds. Defaults to 30000 (30 seconds)."
+    },
+    {
+      "name": "longboard.upwork.client.timeout.read",
+      "type": "java.lang.Integer",
+      "description": "The read timeout to be used in milliseconds. Defaults to 60000 (1 minute)."
+    },
+    {
       "name": "longboard.cors.order",
       "type": "java.lang.Integer",
       "description": "The filter order to be applied to the CorsFilter."

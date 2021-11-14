@@ -1142,24 +1142,21 @@ public class UpworkSvc {
             // If an error was set
             if (errorObject != null) {
                 // Build the message
-                //final StringBuilder messageBldr = new StringBuilder("[Upwork] ");
-                final ObjectNode objectNode = getObjectMapper().createObjectNode();
-                // Indicates its from upwork
-                objectNode.put("origin", "Upwork");
+                final List<String> msgParts = new ArrayList<>();
                 // Add the reason if present
                 Optional.ofNullable(errorObject.optString("reason"))
                         .filter(StringUtils::hasText)
-                        .ifPresent(reason -> objectNode.put("reason", reason));
+                        .ifPresent(reason -> msgParts.add("Reason: " + reason));
                 // Add the code if present
                 Optional.ofNullable(errorObject.optString("code"))
                         .filter(StringUtils::hasText)
-                        .ifPresent(code -> objectNode.put("code", code));
+                        .ifPresent(code -> msgParts.add("Code: " + code));
                 // Add the message if present
                 Optional.ofNullable(errorObject.optString("message"))
                         .filter(StringUtils::hasText)
-                        .ifPresent(message -> objectNode.put("message", message));
+                        .ifPresent(message -> msgParts.add("Message: " + message));
                 // Throw it as an exception
-                throw new RuntimeException(objectNode.toString());
+                throw new RuntimeException("[Upwork] " + String.join(", ", msgParts));
             }
         } catch (JSONException jsonException) {
             log.error(jsonException.getMessage(), jsonException);

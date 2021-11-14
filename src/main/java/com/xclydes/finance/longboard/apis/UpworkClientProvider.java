@@ -35,7 +35,7 @@ public class UpworkClientProvider implements IClientProvider<OAuthClient> {
         return callbackUrl;
     }
 
-    private Optional<TokenResponse> toTokenResponse(final Token token) {
+    public static Optional<TokenResponse> toTokenResponse(final Token token) {
         Optional<TokenResponse> converted = Optional.empty();
         // If the internal token is valid
         if( token != null && token.isComplete()) {
@@ -62,7 +62,7 @@ public class UpworkClientProvider implements IClientProvider<OAuthClient> {
         // Initialize the client
         final OAuthClient oAuthClient = new OAuthClient(config);
         // process the token supplied
-        this.toTokenResponse(token)
+        toTokenResponse(token)
             // If the token is valid
             .ifPresent(existingToken -> {
                 try {
@@ -74,5 +74,5 @@ public class UpworkClientProvider implements IClientProvider<OAuthClient> {
             });
         // Pass on the client
         return oAuthClient;
-    };
+    }
 }

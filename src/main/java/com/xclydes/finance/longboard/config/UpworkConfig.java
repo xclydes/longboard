@@ -1,5 +1,6 @@
 package com.xclydes.finance.longboard.config;
 
+import com.Upwork.api.OAuthClient;
 import com.Upwork.api.UpworkRestClient;
 import com.google.api.client.http.HttpRequestInitializer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,7 +20,7 @@ public class UpworkConfig {
         final HttpRequestInitializer initializer = request -> request.setReadTimeout(clientReadTimeout)
                 .setConnectTimeout(clientConnectTimeout)
                 .setThrowExceptionOnExecuteError(false);
-        UpworkRestClient.setCustomInitializer(initializer);
+        OAuthClient.setRequestInitializer(initializer);
         return initializer;
     }
 }

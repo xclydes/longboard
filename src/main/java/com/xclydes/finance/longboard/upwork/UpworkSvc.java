@@ -403,28 +403,31 @@ public class UpworkSvc {
                                                          final LocalDate to,
                                                          final String companyRef
     ) {
+        throw new IllegalStateException("This function is no longer available. See https://developers.upwork.com/api-changelog.html#thursday-2018-06-28.");
+
         // If a valid reference is not found
-        final String resolvedRef = ValidationUtil.requires(companyRef,
-                StringUtils::hasText, "A valid freelancer/company reference is required");
+//        final String resolvedRef = ValidationUtil.requires(companyRef,
+//                StringUtils::hasText, "A valid freelancer/company reference is required");
+
         //  Disallowed fields: `comment`, `po_number`.
         //  Supported filters: `date`, `week`, `month`, `year`, `date_due`, `buyer_company__reference`,
         //  `buyer_company__id`, `buyer_team__reference`, `buyer_team__id`, `provider__reference`,
         //  `provider__id`, `assignment__reference`, `accounting_entity__reference`, `type`, `subtype`.
         //  Permissions: owner or admin.
-        return performFinancialQuery(
-                QueryBuilder
-                        .get(ArrayUtil.without(FinanceReportFields, "comment", "po_number"))
-                        .andWhere("date", ">=", from)
-                        .andWhere("date", "<=", to)
-                        .build(),
-                (params) -> {
-                    try {
-                        return getBillingsRoute(token).getByFreelancersCompany(resolvedRef, params);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-        );
+//        return performFinancialQuery(
+//                QueryBuilder
+//                        .get(ArrayUtil.without(FinanceReportFields, "comment", "po_number"))
+//                        .andWhere("date", ">=", from)
+//                        .andWhere("date", "<=", to)
+//                        .build(),
+//                (params) -> {
+//                    try {
+//                        return getBillingsRoute(token).getByFreelancersCompany(resolvedRef, params);
+//                    } catch (JSONException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//        );
     }
 
     /**

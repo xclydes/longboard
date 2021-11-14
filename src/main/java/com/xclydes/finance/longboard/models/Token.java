@@ -15,6 +15,7 @@ import java.io.Serializable;
 @ToString
 public class Token implements Serializable {
 
+    public static final String CtxKey = "com.xclydes.finance.longboard.models.Token";
     public final static Token EMPTY = Token.of("");
 
     private final String key;

@@ -2,6 +2,7 @@ package com.xclydes.finance.longboard.config;
 
 import com.xclydes.finance.longboard.component.TokenResolver;
 import com.xclydes.finance.longboard.graphql.DateCoercing;
+import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import graphql.schema.GraphQLScalarType;
 import lombok.extern.slf4j.Slf4j;
@@ -12,15 +13,32 @@ import org.springframework.graphql.data.method.HandlerMethodArgumentResolver;
 import org.springframework.graphql.data.method.HandlerMethodArgumentResolverComposite;
 import org.springframework.graphql.data.method.annotation.support.AnnotatedControllerConfigurer;
 import org.springframework.graphql.execution.RuntimeWiringConfigurer;
+import org.springframework.graphql.web.WebInterceptor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.scheduling.SchedulingTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @Slf4j
 public class GraphQLConfig {
+
+    @Bean
+    public WebInterceptor longboardTokenInterceptor() {
+        return (webInput, chain) -> {
+            // Get the headers
+            final HttpHeaders headers = webInput.getHeaders();
+            // Populate a token based on the headers
+            final Token token = Token.of(headers.getFirst("x-token-key"), headers.getFirst("x-token-secret"));
+            // Add the token to the input
+            webInput.configureExecutionInput((executionInput, builder) -> builder.graphQLContext(Map.of(Token.CtxKey, token)).build());
+            // Continue processing
+            return chain.next(webInput);
+        };
+    }
 
     @Bean
     public RuntimeWiringConfigurer longboardScalarConfigurer() {
@@ -51,7 +69,7 @@ public class GraphQLConfig {
             argumentResolversFld.setAccessible(true);
             // Get the actual list
             final List<HandlerMethodArgumentResolver> lst = (List<HandlerMethodArgumentResolver>) argumentResolversFld.get(composite);
-            // Add our resolver at the beginning of the list
+            // Add our resolver as the second to last in the list
             lst.add(4, tokenResolver);
         } catch (Exception e) {
             log.error(e.getMessage(), e);

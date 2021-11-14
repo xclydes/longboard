@@ -1,7 +1,6 @@
 package com.xclydes.finance.longboard.upwork;
 
 import com.Upwork.api.OAuthClient;
-import com.Upwork.api.Routers.Activities.Engagement;
 import com.Upwork.api.Routers.Hr.Engagements;
 import com.Upwork.api.Routers.Jobs.Profile;
 import com.Upwork.api.Routers.Organization.Companies;
@@ -12,16 +11,16 @@ import com.Upwork.api.Routers.Reports.Finance.Billings;
 import com.Upwork.api.Routers.Reports.Finance.Earnings;
 import com.Upwork.api.Routers.Reports.Time;
 import com.Upwork.api.Routers.Workdiary;
-import com.xclydes.finance.longboard.models.DataPage;
-import com.xclydes.finance.longboard.models.Pagination;
-import com.xclydes.finance.longboard.upwork.models.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xclydes.finance.longboard.apis.IClientProvider;
+import com.xclydes.finance.longboard.models.DataPage;
+import com.xclydes.finance.longboard.models.Pagination;
 import com.xclydes.finance.longboard.models.RequestToken;
 import com.xclydes.finance.longboard.models.Token;
+import com.xclydes.finance.longboard.upwork.models.*;
 import com.xclydes.finance.longboard.util.ArrayUtil;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.JsonUtil;
@@ -38,7 +37,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Array;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;

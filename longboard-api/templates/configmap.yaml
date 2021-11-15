@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lbapi.fullname" . }}
+  {{- if .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels:
+     {{- include "lbapi.labels" . | nindent 4 }}
+  annotations:
+    {{- include "lbapi.annotations" . | nindent 4 }}
+data:
+  {{- range $k, $v := .Values.config }}
+    {{ $k | quote }} : {{ $v | quote -}}
+  {{ end -}}

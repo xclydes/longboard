@@ -114,6 +114,11 @@
       "name": "longboard.executor.prefix",
       "type": "java.lang.String",
       "description": "The thread prefix to be applied to the general task executor pool."
+    },
+    {
+      "name": "longboard.url",
+      "type": "java.lang.String",
+      "description": "The root/base URL for the API."
     }
   ]
 }

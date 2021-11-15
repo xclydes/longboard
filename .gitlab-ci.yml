@@ -167,7 +167,7 @@ lint helm:
     # Lint the charts
     - helm lint $HELM_CHART_DIR
 
-build image:
+jib:
   stage: package
   rules:
     - when: on_success

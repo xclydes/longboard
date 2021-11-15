@@ -37,6 +37,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+	// Sentry
+	implementation 'io.sentry:sentry-spring-boot-starter:5.1.2'
+
 	// Spring GraphQL Boot starter
 	implementation 'org.springframework.experimental:graphql-spring-boot-starter:1.0.0-SNAPSHOT'
 

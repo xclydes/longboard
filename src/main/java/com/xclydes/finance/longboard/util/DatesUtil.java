@@ -49,4 +49,11 @@ public class DatesUtil
             return dateFormatDescription;
         });
     }
+
+    public static DateTimeFormatter formatterDateTime() {
+        return getOrInit(dateFormatDescription, () -> {
+            dateFormatDescription = DateTimeFormatter.ISO_DATE_TIME;
+            return dateFormatDescription;
+        });
+    }
 }

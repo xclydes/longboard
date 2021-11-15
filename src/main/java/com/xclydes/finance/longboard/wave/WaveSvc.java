@@ -295,7 +295,7 @@ public class WaveSvc {
             final String invoiceRef
             ) {
         final LocalDate resolvedFrom = from == null ? LocalDate.EPOCH : from;
-        final LocalDate resolvedTo = from == null ? LocalDate.now() : to;
+        final LocalDate resolvedTo = to == null ? LocalDate.now() : to;
         final int resolvedPage = page == null ? Integer.valueOf(1) : page;
         final int resolvedPageSize = pageSize == null ? Integer.valueOf(99) : pageSize;
         return processQuery(

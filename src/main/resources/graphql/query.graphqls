@@ -36,5 +36,6 @@ type Query {
     waveRefreshToken(refresh: String!): AccessToken
     waveUser: WaveUser
     waveBusiness(id: ID!): WaveBusiness
-    waveBusinesses(page: Int, pageSize: Int): [BusinessPage]
+    waveBusinesses(page: Int, pageSize: Int): WaveBusinessPage
+    waveInvoices(businessId: String!, ref: String, from: Date!, to: Date = "", page: Int, pageSize: Int): WaveInvoicePage
 }

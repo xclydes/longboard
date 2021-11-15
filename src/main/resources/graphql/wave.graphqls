@@ -11,10 +11,233 @@ type WaveBusiness {
     isClassicInvoicing: Boolean
     isPersonal: Boolean
 }
-
-type BusinessPage {
+type WaveBusinessPage {
     pagination: PageInfo!
     page: [WaveBusiness]
 }
+type WaveCurrency {
+    code: String!
+    exponent: Int!
+    name: String!
+    plural: String!
+    symbol: String!
+}
+type WaveMoney {
+    currency: WaveCurrency!
+    raw: Int!
+    value: String!
+}
+"Account subtype."
+type WaveAccountSubtype {
+    "Account subtype name."
+    name: String!
+    "Account type for the subtype."
+    type: WaveAccountType!
+    "Account subtype value."
+    value: String!
+}
+"Account type."
+type WaveAccountType {
+    "Account type name."
+    name: String!
+    "Normal balance type of the account type"
+    normalBalanceType: String!
+    "Account type value."
+    value: String!
+}
+"A unique record for each type of asset, liability, equity, income and expense. Used as part of a Chart of Accounts."
+type WaveAccount {
+    "The balance of the account as of the current date."
+    balance: Float
+    "The balance of the account as of the current date in the business currency."
+    balanceInBusinessCurrency: Float
+    "Business that the account belongs to."
+    business: WaveBusiness!
+    "The classic primary key used internally at Wave."
+    classicId: String
+    "Currency of the account."
+    currency: WaveCurrency!
+    "User defined description for the account."
+    description: String
+    "User defined id for the account."
+    displayId: String
+    "Unique identifier for the account."
+    id: ID!
+    "Indicates whether the account is hidden from view by default."
+    isArchived: Boolean!
+    "Name of the account."
+    name: String!
+    "Credit or Debit."
+    normalBalanceType: String!
+    """
 
+    Numerically increasing version, each representing a revision of account data.
+    As soon as something modifies an account, its sequence is incremented.
+    """
+    sequence: Int!
+    "The account subtype classification based on type."
+    subtype: WaveAccountSubtype!
+    "Account type."
+    type: WaveAccountType!
+}
+"Product (or service) that a business sells to a customer or purchases from a vendor."
+type WaveProduct {
+    "Business that the product belongs to."
+    business: WaveBusiness!
+    "When the product was created."
+    createdAt: DateTime!
+    "Description of the product."
+    description: String
+    "The expense account to associate with this product, set when isBought."
+    expenseAccount: WaveAccount
+    "Unique identifier for the product."
+    id: ID!
+    "The income account to associate with this product, set when isSold."
+    incomeAccount: WaveAccount
+    "Is the product hidden from view by default."
+    isArchived: Boolean!
+    "Is product bought by the business. Allow this product or service to be added to Bills."
+    isBought: Boolean!
+    "Is product sold by the business. Allow this product or service to be added to Invoices."
+    isSold: Boolean!
+    "When the product was last modified."
+    modifiedAt: DateTime!
+    "Name of the product."
+    name: String!
+    "Price per unit in the major currency unit."
+    unitPrice: Float!
+}
 
+"Invoice line item."
+type WaveInvoiceItem {
+    "Income account."
+    account: WaveAccount!
+    "Detailed description."
+    description: String
+    "Associated product."
+    product: WaveProduct!
+    "Number of units."
+    quantity: Float!
+    "Pretax total."
+    subtotal: WaveMoney!
+    "Total including sales taxes."
+    total: WaveMoney!
+    "Price per unit in the major currency unit."
+    unitPrice: Float!
+}
+type WaveCustomer {
+    "Business that the customer belongs to."
+    business: WaveBusiness!
+    "When the customer was created."
+    createdAt: DateTime!
+    "Default currency used by the customer."
+    currency: WaveCurrency
+    "User defined id for the customer. Commonly referred to as Account Number."
+    displayId: String
+    "Email of the principal contact."
+    email: String
+    "Fax number of the customer."
+    fax: String
+    "First name of the principal contact."
+    firstName: String
+    "Unique identifier for the customer."
+    id: ID!
+    "Internal notes about the customer."
+    internalNotes: String
+    "Whether or not the customer is archived."
+    isArchived: Boolean
+    "Last name of the principal contact."
+    lastName: String
+    "Mobile telephone number of the principal contact."
+    mobile: String
+    "When the customer was last modified."
+    modifiedAt: DateTime!
+    "Name or business name of the customer."
+    name: String!
+    "Telephone number of the customer."
+    phone: String
+    "Toll-free number of the customer."
+    tollFree: String
+    "Website address of the customer."
+    website: String
+}
+type WaveInvoice {
+    "Invoice total less amount already paid."
+    amountDue: WaveMoney!
+    "Total of all payments so far made against this invoice."
+    amountPaid: WaveMoney!
+    "The label for the 'Amount' (= unit x price) column in the listing of line items on the invoice."
+    amountTitle: String!
+    "Business that the invoice belongs to."
+    business: WaveBusiness!
+    "When the invoice was created."
+    createdAt: DateTime!
+    "Currency of the invoice."
+    currency: WaveCurrency!
+    "Customer the invoice is for."
+    customer: WaveCustomer!
+    "Within a business that is enabled to accept credit card payments, indicates if this individual invoice has been marked to not be payable by American Express."
+    disableAmexPayments: Boolean!
+    "Within a business that is enabled to accept bank payments, indicates if this individual invoice has been marked to not be payable by bank payment."
+    disableBankPayments: Boolean!
+    "Within a business that is enabled to accept credit card payments, indicates if this individual invoice has been marked to not be payable by card."
+    disableCreditCardPayments: Boolean!
+    "Date when payment is due."
+    dueDate: Date!
+    "Exchange rate to business's currency from the invoice's currency. Used to value the invoice income within Wave's accounting transactions."
+    exchangeRate: Float!
+    "Invoice footer text."
+    footer: String
+    "Indicates whether item's amount is hidden in the line items listing."
+    hideAmount: Boolean!
+    "Indicates whether item's description in item column is hidden in the line items listing."
+    hideDescription: Boolean!
+    "Indicates whether item's product name in item column is hidden in the line items listing."
+    hideName: Boolean!
+    "Indicates whether item's price is hidden in the line items listing."
+    hidePrice: Boolean!
+    "Indicates whether item's unit is hidden in the line items listing."
+    hideUnit: Boolean!
+    "Unique identifier for the invoice."
+    id: ID!
+    "Date when invoice is issued."
+    invoiceDate: Date!
+    "Unique number assigned to the invoice."
+    invoiceNumber: String!
+    "The label for the 'Item' column in the line items listing."
+    itemTitle: String!
+    "The line items (product, unit and price) that make up the invoiced sale."
+    items: [WaveInvoiceItem!]
+    "When the invoice was last sent."
+    lastSentAt: DateTime
+    "When the invoice was last viewed by the customer."
+    lastViewedAt: DateTime
+    "Invoice memo (notes) text."
+    memo: String
+    "When the invoice was last modified."
+    modifiedAt: DateTime!
+    "URL to access PDF representation of the invoice."
+    pdfUrl: String!
+    "Purchase order or sales order number for the invoice."
+    poNumber: String
+    "The label for the 'Price' column in the listing of line items on the invoice."
+    priceTitle: String!
+    "Status of the Invoice."
+    status: String!
+    "Invoice subheading text."
+    subhead: String
+    "Total of all sales taxes on all line items within the invoice."
+    taxTotal: WaveMoney!
+    "Invoice title at the top of the document."
+    title: String!
+    "Total value of the invoice including sales taxes."
+    total: WaveMoney!
+    "The label for the 'Unit' column in the listing of line items on the invoice."
+    unitTitle: String!
+    "URL to view the invoice online as seen by a customer."
+    viewUrl: String!
+}
+type WaveInvoicePage {
+    pagination: PageInfo!
+    page: [WaveInvoice]
+}

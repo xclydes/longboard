@@ -19,6 +19,7 @@ import org.springframework.scheduling.SchedulingTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.lang.reflect.Field;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +48,15 @@ public class GraphQLConfig {
                 .name("Date")
                 .description("Support for dates in the yyyy-MM-dd format. Assumes today when an empty non-null string.")
                 .build();
+        final GraphQLScalarType dateTimeType = GraphQLScalarType.newScalar()
+                .coercing(new DateCoercing(DatesUtil.formatterDateTime(), DateCoercing.SupplyNow))
+                .name("DateTime")
+                .description("Support for dates in the yyyy-MM-dd format. Assumes now when an empty non-null string.")
+                .build();
         // Provide these via a builder
         return (wiringBuilder) -> wiringBuilder
                 .scalar(dateType)
+                .scalar(dateTimeType)
                 ;
     }
 

@@ -85,7 +85,6 @@ public class UpworkSvc {
         return objectMapper;
     }
 
-
     public RequestToken startLogin(final String state) {
         // Get the url
         final OAuthClient client = getClientProvider().getClient();
@@ -117,7 +116,6 @@ public class UpworkSvc {
         }
     }
 
-    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
     public Token getRefreshedAccessToken(final String refreshToken) {
         try {
             // Get the url

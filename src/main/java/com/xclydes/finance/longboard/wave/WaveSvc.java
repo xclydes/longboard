@@ -144,7 +144,6 @@ public class WaveSvc {
      * @param refreshToken The refresh token to submit
      * @return The access token returned
      */
-    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
     public Mono<Token> getRefreshedAccessToken(final String refreshToken) {
         // Build the request body
         final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();

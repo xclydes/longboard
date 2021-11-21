@@ -1141,22 +1141,19 @@ public class UpworkSvc {
             }
             // If an error was set
             if (errorObject != null) {
-                // Build the message
-                final List<String> msgParts = new ArrayList<>();
-                // Add the reason if present
-                Optional.ofNullable(errorObject.optString("reason"))
+                // Extract the reason
+                final String reason =  Optional.ofNullable(errorObject.optString("reason"))
+                        .filter(StringUtils::hasText).orElse("");
+                // Extract the message
+                final String message =  Optional.ofNullable(errorObject.optString("message"))
+                        .filter(StringUtils::hasText).orElse("");
+                // Extract the code
+                final Integer code =  Optional.ofNullable(errorObject.optString("code"))
                         .filter(StringUtils::hasText)
-                        .ifPresent(reason -> msgParts.add("Reason: " + reason));
-                // Add the code if present
-                Optional.ofNullable(errorObject.optString("code"))
-                        .filter(StringUtils::hasText)
-                        .ifPresent(code -> msgParts.add("Code: " + code));
-                // Add the message if present
-                Optional.ofNullable(errorObject.optString("message"))
-                        .filter(StringUtils::hasText)
-                        .ifPresent(message -> msgParts.add("Message: " + message));
+                        .map(Integer::parseInt)
+                        .orElse(0);
                 // Throw it as an exception
-                throw new RuntimeException("[Upwork] " + String.join(", ", msgParts));
+                throw new APIException(message, reason, code);
             }
         } catch (JSONException jsonException) {
             log.error(jsonException.getMessage(), jsonException);

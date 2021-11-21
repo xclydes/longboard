@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static com.xclydes.finance.longboard.config.CacheConfig.*;
+import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.*;
 import static com.xclydes.finance.longboard.util.GraphQLUtil.processQuery;
 import static com.xclydes.finance.longboard.util.GraphQLUtil.unwrapNestedElement;
 

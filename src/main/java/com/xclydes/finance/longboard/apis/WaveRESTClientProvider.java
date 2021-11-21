@@ -8,6 +8,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.WAVE_APICLIENT_REST;
+
 @Component
 @Qualifier("wave-rest")
 public class WaveRESTClientProvider implements IClientProvider<WebClient> {
@@ -19,7 +21,7 @@ public class WaveRESTClientProvider implements IClientProvider<WebClient> {
     }
 
     @Override
-    @Cacheable(CacheConfig.WAVE_APICLIENT_REST)
+    @Cacheable(WAVE_APICLIENT_REST)
     public WebClient getClient(final Token token) {
         final WebClient.Builder builder = WebClient
             .builder()

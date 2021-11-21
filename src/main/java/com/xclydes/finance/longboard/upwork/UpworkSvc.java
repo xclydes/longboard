@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.xclydes.finance.longboard.config.CacheConfig.*;
+import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.*;
 
 @Service
 @Getter

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.util.Optional;
 import java.util.Properties;
 
+import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.UPWORK_APICLIENT;
+
 @Component
 @Qualifier("upwork")
 public class UpworkClientProvider implements IClientProvider<OAuthClient> {
@@ -51,7 +53,7 @@ public class UpworkClientProvider implements IClientProvider<OAuthClient> {
     }
 
     @Override
-    @Cacheable(CacheConfig.UPWORK_APICLIENT)
+    @Cacheable(UPWORK_APICLIENT)
     public OAuthClient getClient(final Token token) {
         // Configure the client
         final Properties props = new Properties();

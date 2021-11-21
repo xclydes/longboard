@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.WAVE_APICLIENT_GRAPHQL;
+
 @Component
 @Qualifier("wave-graphql")
 public class WaveGraphQLClientProvider implements IClientProvider<ApolloClient> {
@@ -31,7 +33,7 @@ public class WaveGraphQLClientProvider implements IClientProvider<ApolloClient> 
     }
 
     @Override
-    @Cacheable(CacheConfig.WAVE_APICLIENT_GRAPHQL)
+    @Cacheable(WAVE_APICLIENT_GRAPHQL)
     public ApolloClient getClient(final Token token) {
         // Build the apollo client
         final ApolloClient.Builder apolloBldr = ApolloClient.builder().serverUrl(this.endpointUrl);

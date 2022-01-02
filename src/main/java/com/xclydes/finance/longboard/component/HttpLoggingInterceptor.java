@@ -66,8 +66,10 @@ public class HttpLoggingInterceptor implements Interceptor {
                 "<redacted>";
             bldr.append(headerName)
                 .append(": ")
-                .append(headerValue);
+                .append(headerValue)
+                .append("\r\n");
         });
+        bldr.append("\r\n");
         return bldr.toString();
     }
 

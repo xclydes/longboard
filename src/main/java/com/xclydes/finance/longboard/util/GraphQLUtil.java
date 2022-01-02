@@ -2,7 +2,9 @@ package com.xclydes.finance.longboard.util;
 
 import com.apollographql.apollo.ApolloCall;
 import com.apollographql.apollo.ApolloClient;
+import com.apollographql.apollo.ApolloMutationCall;
 import com.apollographql.apollo.ApolloQueryCall;
+import com.apollographql.apollo.api.Mutation;
 import com.apollographql.apollo.api.Query;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
@@ -10,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.MonoSink;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -38,7 +41,6 @@ public class GraphQLUtil {
         }
     }
 
-
     public static <E, N> List<N> unwrapNestedElement(Collection<E> edges, final Function<E, N> extractor) {
         List<N> nodes = Collections.emptyList();
         // If there are enough elements
@@ -62,39 +64,66 @@ public class GraphQLUtil {
         return Mono.<O>create(sink -> {
             // Execute the query
             final ApolloQueryCall<R> queryCall = client.query(query);
-            // Process the response
-            queryCall.enqueue(new ApolloCall.Callback<>() {
-                @Override
-                public void onResponse(@NotNull Response<R> response) {
+            // Process the call
+            handleApolloCall(sink, queryCall, onResponse, onFailure);
+        })
+        .onErrorStop();
+    }
+
+    public static <O, R> Mono<O> processMutation(final ApolloClient client,
+                                        final Mutation<?, R, ?> query,
+                                        final Function<Response<R>, O> onResponse) {
+        return processMutation(client, query, onResponse, null);
+    }
+
+    public static <O, R> Mono<O> processMutation(final ApolloClient client,
+                                        final Mutation<?, R, ?> query,
+                                        final Function<Response<R>, O> onResponse,
+                                        final Consumer<ApolloException> onFailure) {
+        return Mono.<O>create(sink -> {
+            // Execute the query
+            final ApolloMutationCall<R> mutationCall = client.mutate(query);
+            // Process the call
+            handleApolloCall(sink, mutationCall, onResponse, onFailure);
+        })
+        .onErrorStop();
+    }
+
+    private static <O, R> void handleApolloCall(final MonoSink<O> sink,
+                                                final ApolloCall<R> call,
+                                                final Function<Response<R>, O> onResponse,
+                                                final Consumer<ApolloException> onFailure) {
+        // Process the response
+        call.enqueue(new ApolloCall.Callback<>() {
+            @Override
+            public void onResponse(@NotNull Response<R> response) {
+                try {
+                    // Pass it to the handler
+                    final O result = onResponse.apply(response);
+                    // Have the sink complete it
+                    sink.success(result);
+                } catch (Throwable t) {
+                    // Pass it as an error to the sink
+                    sink.error(t);
+                }
+            }
+
+            @Override
+            public void onFailure(@NotNull ApolloException e) {
+                // if there is a failure callback
+                if (onFailure != null) {
                     try {
-                        // Pass it to the handler
-                        final O result = onResponse.apply(response);
-                        // Have the sink complete it
-                        sink.success(result);
+                        // Let the callback handle it
+                        onFailure.accept(e);
                     } catch (Throwable t) {
                         // Pass it as an error to the sink
                         sink.error(t);
                     }
+                } else {
+                    // Let the sink handle it directly
+                    sink.error(e);
                 }
-
-                @Override
-                public void onFailure(@NotNull ApolloException e) {
-                    // if there is a failure callback
-                    if (onFailure != null) {
-                        try {
-                            // Let the callback handle it
-                            onFailure.accept(e);
-                        } catch (Throwable t) {
-                            // Pass it as an error to the sink
-                            sink.error(t);
-                        }
-                    } else {
-                        // Let the sink handle it directly
-                        sink.error(e);
-                    }
-                }
-            });
-        })
-        .onErrorStop();
+            }
+        });
     }
 }

@@ -6,14 +6,16 @@ import com.xclydes.finance.longboard.models.DataPage;
 import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.upwork.UpworkSvc;
 import com.xclydes.finance.longboard.upwork.models.*;
+import org.reactivestreams.Publisher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.SchedulingTaskExecutor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,18 +24,18 @@ import java.util.List;
 public class UpworkController extends AbsAPIController<OAuthClient> {
 
     private final UpworkSvc upworkSvc;
-    private final SchedulingTaskExecutor taskExecutor;
+    private final Scheduler scheduler;
 
     public UpworkController(final IClientProvider<OAuthClient> clientProvider,
                             final UpworkSvc upworkSvc,
-                            final SchedulingTaskExecutor longboardTaskExecutor) {
+                            @Qualifier("longboardScheduler") final Scheduler scheduler) {
         super(clientProvider);
         this.upworkSvc = upworkSvc;
-        this.taskExecutor = longboardTaskExecutor;
+        this.scheduler = scheduler;
     }
 
-    protected SchedulingTaskExecutor getTaskExecutor() {
-        return taskExecutor;
+    public Scheduler getScheduler() {
+        return scheduler;
     }
 
     public UpworkSvc getUpworkSvc() {
@@ -83,31 +85,17 @@ public class UpworkController extends AbsAPIController<OAuthClient> {
     }
 
     @QueryMapping
-    public Flux<DiaryRecord> upworkCompanyDiary(final Token token,
-                                                @Argument("companyOrTeamID") final String id,
-                                                @Argument("from") final LocalDate fromDate,
-                                                @Argument("to") LocalDate to
+    public Publisher<DiaryRecord> upworkCompanyDiary(final Token token,
+                                                     @Argument("companyOrTeamID") final String id,
+                                                     @Argument("from") final LocalDate fromDate,
+                                                     @Argument("to") LocalDate to
     ) {
-        return Flux.create((sink) -> {
-            final LocalDate toDate = to != null ? to : fromDate;
-            // Generate a request for every date in-between
-            fromDate.datesUntil(toDate.plusDays(1))
-                    .parallel()
-                    .map(requestDate -> getTaskExecutor().submit(() ->
-                            getUpworkSvc().companyWorkdiary(token, requestDate, id))
-                    )
-                    .forEach(task -> {
-                        try {
-                            // Success with each
-                            task.get().forEach(sink::next);
-                        } catch (Exception e) {
-                            // TODO What about this?
-                            sink.error(e);
-                        }
-                    });
-            // That's all
-            sink.complete();
-        });
+        final LocalDate toDate = to != null ? to : fromDate;
+        return Flux.fromStream(fromDate.datesUntil(toDate.plusDays(1)))
+            .parallel()
+            .runOn(getScheduler())
+            .map(requestDate ->  getUpworkSvc().companyWorkdiary(token, requestDate, id))
+            .flatMap(Flux::fromIterable);
     }
 
     @QueryMapping

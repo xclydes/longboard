@@ -126,18 +126,8 @@ type WaveInvoiceItem {
     unitPrice: Float!
 }
 type WaveCustomer {
-    "Business that the customer belongs to."
-    business: WaveBusiness!
-    "When the customer was created."
-    createdAt: DateTime!
-    "Default currency used by the customer."
-    currency: WaveCurrency
     "User defined id for the customer. Commonly referred to as Account Number."
     displayId: String
-    "Email of the principal contact."
-    email: String
-    "Fax number of the customer."
-    fax: String
     "First name of the principal contact."
     firstName: String
     "Unique identifier for the customer."
@@ -148,18 +138,8 @@ type WaveCustomer {
     isArchived: Boolean
     "Last name of the principal contact."
     lastName: String
-    "Mobile telephone number of the principal contact."
-    mobile: String
-    "When the customer was last modified."
-    modifiedAt: DateTime!
     "Name or business name of the customer."
     name: String!
-    "Telephone number of the customer."
-    phone: String
-    "Toll-free number of the customer."
-    tollFree: String
-    "Website address of the customer."
-    website: String
 }
 type WaveInvoice {
     "Invoice total less amount already paid."
@@ -237,7 +217,29 @@ type WaveInvoice {
     "URL to view the invoice online as seen by a customer."
     viewUrl: String!
 }
+
+type WaveCustomerPage {
+    pagination: PageInfo!
+    page: [WaveCustomer]
+}
+
 type WaveInvoicePage {
     pagination: PageInfo!
     page: [WaveInvoice]
+}
+
+input WaveCustomerInput {
+    id: ID!
+    name: String!
+    reference: String!
+    company__reference: String!
+    parent_team__reference: String!
+    parent_team__id: String
+    company_name: String
+    parent_team__name: String
+}
+
+
+input WaveInvoiceInput {
+    id: ID!
 }

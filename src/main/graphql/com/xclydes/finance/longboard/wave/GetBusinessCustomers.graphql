@@ -11,6 +11,12 @@ query GetBusinessCustomers($businessId: ID!, $cusPage:Int = 1, $cusPageSize:Int 
             edges {
                 node {
                     ...CustomerFragment
+                    createdAt
+                    modifiedAt
+                    business {
+                        id
+                        name
+                    }
                 }
             }
         }

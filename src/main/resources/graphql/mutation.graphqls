@@ -1,0 +1,9 @@
+type Mutation {
+    #Common
+
+    # Upwork
+
+    # Wave
+    waveSaveCustomers(business: String!, customers: [WaveCustomerInput!]): WaveCustomerPage!
+    waveSaveTransaction(invoices: [WaveInvoiceInput!]): WaveInvoicePage!
+}

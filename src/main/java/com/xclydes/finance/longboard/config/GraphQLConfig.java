@@ -82,14 +82,4 @@ public class GraphQLConfig {
         }
         return tokenResolver;
     }
-
-    @Bean({"longboardExecutor", "longboardTaskExecutor"})
-    public SchedulingTaskExecutor longboardTaskExecutor(@Value("${longboard.executor.size}") final int size,
-                                                        @Value("${longboard.executor.prefix}") final String prefix) {
-        final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setMaxPoolSize(size);
-        executor.setThreadNamePrefix(prefix);
-        executor.initialize();
-        return executor;
-    }
 }

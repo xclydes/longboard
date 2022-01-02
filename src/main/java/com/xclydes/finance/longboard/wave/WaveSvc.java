@@ -2,7 +2,9 @@ package com.xclydes.finance.longboard.wave;
 
 import com.apollographql.apollo.ApolloClient;
 import com.apollographql.apollo.api.Input;
+import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xclydes.finance.longboard.apis.IClientProvider;
 import com.xclydes.finance.longboard.models.DataPage;
@@ -12,8 +14,13 @@ import com.xclydes.finance.longboard.models.Token;
 import com.xclydes.finance.longboard.util.ArrayUtil;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.GraphQLUtil;
+import com.xclydes.finance.longboard.util.JsonUtil;
 import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
+import com.xclydes.finance.longboard.wave.fragment.CustomerFragment;
 import com.xclydes.finance.longboard.wave.fragment.InvoiceFragment;
+import com.xclydes.finance.longboard.wave.type.CustomerCreateInput;
+import com.xclydes.finance.longboard.wave.type.CustomerPatchInput;
+import com.xclydes.finance.longboard.wave.type.CustomerSort;
 import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +28,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
@@ -29,21 +37,21 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.*;
-import static com.xclydes.finance.longboard.util.GraphQLUtil.processQuery;
-import static com.xclydes.finance.longboard.util.GraphQLUtil.unwrapNestedElement;
+import static com.xclydes.finance.longboard.util.GraphQLUtil.*;
 
 @Service
 @Getter
@@ -70,6 +78,7 @@ public class WaveSvc {
     private final String clientSecret;
     private final List<String> scopes;
     private final String callback;
+    private final Scheduler scheduler;
 
     public WaveSvc(@Qualifier("wave-graphql") final IClientProvider<ApolloClient> clientProviderGQL,
                    @Qualifier("wave-rest") final IClientProvider<WebClient> clientProviderRest,
@@ -78,7 +87,8 @@ public class WaveSvc {
                    @Value("${longboard.wave.client.key}") final String clientId,
                    @Value("${longboard.wave.client.secret}") final String clientSecret,
                    @Value("${longboard.wave.oauth.scopes}") final List<String> scopes,
-                   @Value("${longboard.wave.oauth.callback}") final String callback) {
+                   @Value("${longboard.wave.oauth.callback}") final String callback,
+                   @Qualifier("longboardScheduler") final Scheduler scheduler) {
         this.clientProviderGQL = clientProviderGQL;
         this.clientProviderRest = clientProviderRest;
         this.loginUrl = loginUrl;
@@ -87,6 +97,11 @@ public class WaveSvc {
         this.clientSecret = clientSecret;
         this.scopes = scopes;
         this.callback = callback;
+        this.scheduler = scheduler;
+    }
+
+    protected Scheduler getScheduler() {
+        return scheduler;
     }
 
     /**
@@ -246,7 +261,7 @@ public class WaveSvc {
     public Mono<DataPage<BusinessFragment>> businesses(final Token token, final Integer page, final Integer pageSize) {
         return processQuery(
                 provideGraphQLClient(token),
-                new BusinessListQuery(Input.fromNullable(page), Input.fromNullable(pageSize)),
+                BusinessListQuery.builder().page(page).pageSize(pageSize).build(),
                 (dataResponse) -> {
                     // Throw the errors if any
                     GraphQLUtil.throwErrors(dataResponse);
@@ -349,6 +364,168 @@ public class WaveSvc {
                             .map(GetBusinessInvoiceQuery.Invoice::fragments)
                             .map(GetBusinessInvoiceQuery.Invoice.Fragments::invoiceFragment);
                 }
+        );
+    }
+
+    @CacheEvict({WAVE_CUSTOMER, WAVE_CUSTOMERS})
+    public Flux<CustomerFragment> getBusinessCustomers(final Token token,
+                                                            final String businessID) {
+        return Flux.create((sink) -> {
+            List<CustomerSort> sort = Collections.singletonList(CustomerSort.NAME_ASC);
+            final AtomicReference<Integer>  currentPage = new AtomicReference<>(1);
+            final AtomicReference<Integer> maxPage = new AtomicReference<>(0);
+            do {
+                try {
+                    final List<GetBusinessCustomersQuery.Edge> edges = processQuery(
+                        getClientProviderGQL().getClient(token),
+                        GetBusinessCustomersQuery.builder().businessId(businessID)
+                                .cusPage(currentPage.get())
+                                .cusPageSize(99)
+                                .cusSort(sort)
+                                .build(),
+                        Response::getData
+                    )
+                    .mapNotNull(GetBusinessCustomersQuery.Data::business)
+                    .mapNotNull(business -> business.customers)
+                    .mapNotNull(customers -> {
+                        final GetBusinessCustomersQuery.PageInfo pageInfo = customers.pageInfo();
+                        maxPage.set(Optional.ofNullable(pageInfo.totalPages()).orElse(0));
+                        return customers.edges();
+                    })
+                    .blockOptional()
+                    .orElse(Collections.emptyList());
+                    // Take the edges found as a stream
+                    edges.stream()
+                            .map(GetBusinessCustomersQuery.Edge::node)
+                            .filter(Objects::nonNull)
+                            .map(node -> node.fragments().customerFragment())
+                            .forEach(sink::next);
+                } catch (Exception e) {
+                    sink.error(e);
+                }
+                currentPage.getAndUpdate(p -> p + 1);
+            } while( currentPage.get() < maxPage.get() );
+            // That's all
+            sink.complete();
+        });
+    }
+
+    @CacheEvict({WAVE_CUSTOMER, WAVE_CUSTOMERS})
+    public Mono<CustomerFragment> saveCustomer(final Token token,
+                                               final String businessID,
+                                               final CustomerFragment newCustomerFragment) {
+        log.info("Saving customer {} ({})  to Wave.", newCustomerFragment.name(), newCustomerFragment.displayId());
+        // Determine if there is a customer with the
+        return Mono.just(newCustomerFragment)
+            .flatMap(customerFragment -> {
+                // Find the entry with the same display ID
+                return getBusinessCustomers(token, businessID)
+                .filter(custFrag -> Objects.equals(custFrag.displayId(), newCustomerFragment.displayId()))
+                .next()
+                .map(Optional::ofNullable)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(existingCustomerOpt -> existingCustomerOpt
+                    .map( existingCust -> {
+                        // Parse both notes
+                        JsonNode oldNotes = JsonUtil.newObject();
+                        try {
+                            oldNotes = JsonUtil.reader().readTree(existingCust.internalNotes());
+                        }catch (Exception ignored) {}
+                        JsonNode newNotes = JsonUtil.newObject();
+                        try {
+                            newNotes = JsonUtil.reader().readTree(newCustomerFragment.internalNotes());
+                        } catch (Exception ignored) {}
+                        // Merge both notes
+                        final JsonNode mergedNotes = JsonUtil.merge(oldNotes, newNotes);
+
+                        // Merge both records into one
+                        final CustomerFragment mergedCustomer = new CustomerFragment(
+                                "Customer",
+                                existingCust.id(),
+                                existingCust.displayId(),
+                                newCustomerFragment.firstName(),
+                                newCustomerFragment.lastName(),
+                                newCustomerFragment.name(),
+                                mergedNotes.toPrettyString()
+                        );
+                        // Perform an update
+                        return this.updateCustomer(token, mergedCustomer);
+                    })
+                    .orElseGet( () -> this.createCustomer(token, businessID, newCustomerFragment) ));
+            });
+    }
+
+    private Mono<CustomerFragment> createCustomer(final Token token,
+                                                  final String business,
+                                                  final CustomerFragment customer) {
+        // Create the PatchInput
+        final CustomerCreateInput input = CustomerCreateInput.builder()
+                .displayId(customer.displayId())
+                .name(customer.name())
+                .firstName(customer.firstName())
+                .lastName(customer.lastName())
+                .internalNotes(customer.internalNotes())
+                .businessId(business)
+                .build();
+        // Create the mutation
+        return processMutation(
+            getClientProviderGQL().getClient(token),
+            new CreateCustomerMutation(input),
+            dataResponse -> {
+                // Throw the errors if any
+                GraphQLUtil.throwErrors(dataResponse);
+                // Get the patch errors
+                final CreateCustomerMutation.CustomerCreate created = Optional.ofNullable(dataResponse.getData())
+                        .map(data -> data.customerCreate)
+                        .orElseThrow(() -> new IllegalStateException("No patch in response"));
+                // If it failed
+                if(!created.didSucceed && created.inputErrors() != null) {
+                    // Process the input errors
+                    throw created.inputErrors()
+                    .stream().findFirst()
+                    .map(error -> new ResponseStatusException(HttpStatus.BAD_REQUEST, error.message()))
+                    .orElse(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Customer creation failed for unknown reasons"));
+                }
+                // Process the result
+                return created.customer().fragments().customerFragment();
+            }
+        );
+    }
+
+    private Mono<CustomerFragment> updateCustomer(final Token token,
+                                                  final CustomerFragment customer) {
+        log.info("Updating customer {} ({}) : {} to Wave.", customer.name(), customer.displayId(), customer.id());
+        // Create the PatchInput
+        final CustomerPatchInput input = CustomerPatchInput.builder()
+                .id(customer.id())
+                .displayId(customer.displayId())
+                .name(customer.name())
+                .firstName(customer.firstName())
+                .lastName(customer.lastName())
+                .internalNotes(customer.internalNotes())
+                .build();
+        // Create the mutation
+        return processMutation(
+            getClientProviderGQL().getClient(token),
+            new PatchCustomerMutation(input),
+            dataResponse -> {
+                // Throw the errors if any
+                GraphQLUtil.throwErrors(dataResponse);
+                // Get the patch errors
+                final PatchCustomerMutation.CustomerPatch patched = Optional.ofNullable(dataResponse.getData())
+                        .map(data -> data.customerPatch)
+                        .orElseThrow(() -> new IllegalStateException("No patch in response"));
+                // If it failed
+                if(!patched.didSucceed && patched.inputErrors() != null) {
+                    // Process the input errors
+                    throw patched.inputErrors()
+                    .stream().findFirst()
+                    .map(error -> new ResponseStatusException(HttpStatus.BAD_REQUEST, error.message()))
+                    .orElse(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Customer update failed for unknown reasons"));
+                }
+                // Process the result
+                return patched.customer().fragments().customerFragment();
+            }
         );
     }
 

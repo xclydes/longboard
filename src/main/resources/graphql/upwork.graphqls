@@ -47,6 +47,7 @@ type UpworkCompany {
     payment_verification_status: String
     reference: String!
 }
+
 type UpworkTeam {
     id: ID!
     name: String!

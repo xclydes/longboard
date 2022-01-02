@@ -9,6 +9,10 @@ public class Pagination {
     public final int totalPages;
     public final int totalCount;
 
+    public Pagination(final Integer totalCount) {
+        this(totalCount, 1, 1, totalCount);
+    }
+
     public Pagination(final Integer pageSize, final Integer currentPage, final Integer totalPages, final Integer totalCount) {
         this.pageSize = orZero(pageSize);
         this.currentPage = orZero(currentPage);

@@ -119,7 +119,7 @@ public class WaveSvc {
      * @param state The state code to be used for the request
      * @return The request token details
      */
-    @Cacheable(cacheNames = {WAVE_OAUTH_URL})
+    @Cacheable(cacheNames = {WAVE_OAUTH_URL}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<RequestToken> getLoginUrl(final String state) {
         final UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder
                 .fromHttpUrl(this.getLoginUrl())
@@ -144,7 +144,7 @@ public class WaveSvc {
      * @param verifier The verifier to submit
      * @return The access token returned
      */
-    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN})
+    @Cacheable(cacheNames = {WAVE_ACCESSTOKEN}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<Token> getAccessToken(final String verifier) {
         // Build the request body
         final MultiValueMap<String, String> bodyValues = new LinkedMultiValueMap<>();
@@ -200,7 +200,7 @@ public class WaveSvc {
      * @param b64Id The base64 ID to be parsed
      * @return A map of attributes to values read from the ID
      */
-    @Cacheable(cacheNames = {WAVE_APIID})
+    @Cacheable(cacheNames = {WAVE_APIID}, keyGenerator = "longboardWaveCacheKeyGen")
     public Map<String, String> decodeId(final String b64Id) {
         final byte[] bytes = Base64Utils.decodeFromString(b64Id);
         final String[] parts = new String(bytes).split("[;:]+");
@@ -239,7 +239,7 @@ public class WaveSvc {
      * @param token The user token to forward to Wave
      * @return The user details found, if any.
      */
-    @Cacheable(cacheNames = {WAVE_USER})
+    @Cacheable(cacheNames = {WAVE_USER}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<Optional<GetUserQuery.User>> user(final Token token) {
         return processQuery(provideGraphQLClient(token), new GetUserQuery(), (dataResponse) -> {
             // Throw the errors if any
@@ -257,7 +257,7 @@ public class WaveSvc {
      * @param pageSize The number of elements per page to be requested
      * @return The set matching the configuration specified
      */
-    @Cacheable(cacheNames = {WAVE_BUSINESSES})
+    @Cacheable(cacheNames = {WAVE_BUSINESSES}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<DataPage<BusinessFragment>> businesses(final Token token, final Integer page, final Integer pageSize) {
         return processQuery(
                 provideGraphQLClient(token),
@@ -285,7 +285,7 @@ public class WaveSvc {
         );
     }
 
-    @Cacheable(cacheNames = {WAVE_BUSINESS})
+    @Cacheable(cacheNames = {WAVE_BUSINESS}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<Optional<BusinessFragment>> business(final Token token, final String businessID) {
         return processQuery(provideGraphQLClient(token), new GetBusinessQuery(businessID), (dataResponse) -> {
             // Throw the errors if any
@@ -298,7 +298,7 @@ public class WaveSvc {
         });
     }
 
-    @Cacheable(cacheNames = {WAVE_INVOICES})
+    @Cacheable(cacheNames = {WAVE_INVOICES}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<DataPage<InvoiceFragment>> invoices(
             final Token token,
             final String businessID ,
@@ -346,7 +346,7 @@ public class WaveSvc {
         );
     }
 
-    @Cacheable(cacheNames = {WAVE_INVOICE})
+    @Cacheable(cacheNames = {WAVE_INVOICE}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<Optional<InvoiceFragment>> invoice(final Token token,
                                                   final String businessID,
                                                   final String invoiceID) {
@@ -367,7 +367,7 @@ public class WaveSvc {
         );
     }
 
-    @CacheEvict({WAVE_CUSTOMER, WAVE_CUSTOMERS})
+    @CacheEvict(cacheNames = {WAVE_CUSTOMERS}, keyGenerator = "longboardWaveCacheKeyGen")
     public Flux<CustomerFragment> getBusinessCustomers(final Token token,
                                                             final String businessID) {
         return Flux.create((sink) -> {
@@ -410,7 +410,7 @@ public class WaveSvc {
         });
     }
 
-    @CacheEvict({WAVE_CUSTOMER, WAVE_CUSTOMERS})
+    @CacheEvict(cacheNames = {WAVE_CUSTOMER, WAVE_CUSTOMERS})
     public Mono<CustomerFragment> saveCustomer(final Token token,
                                                final String businessID,
                                                final CustomerFragment newCustomerFragment) {
@@ -529,7 +529,7 @@ public class WaveSvc {
         );
     }
 
-    @CacheEvict({WAVE_INVOICE, WAVE_INVOICES})
+    @CacheEvict(cacheNames = {WAVE_INVOICE, WAVE_INVOICES}, keyGenerator = "longboardWaveCacheKeyGen")
     public Mono<CreateInvoiceMutation.InvoiceCreate> createInvoice(final InvoiceCreateInput invoice) {
 //        val mutationResult = clientGraphQL.mutate(CreateInvoiceMutation(invoice)).await()
 //        mutationResult.data?.invoiceCreate

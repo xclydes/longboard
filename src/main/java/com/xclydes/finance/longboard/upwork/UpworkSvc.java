@@ -99,7 +99,7 @@ public class UpworkSvc {
      * @param verifier The verifier to submit
      * @return The access token returned
      */
-    @Cacheable(cacheNames = {UPWORK_ACCESSTOKEN})
+    @Cacheable(cacheNames = {UPWORK_ACCESSTOKEN}, keyGenerator = "longboardUpworkCacheKeyGen")
     public Token getAccessToken(final String verifier) {
         try {
             // Get the url
@@ -138,7 +138,7 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @return The user requested, if found
      */
-    @Cacheable(cacheNames = {UPWORK_USER})
+    @Cacheable(cacheNames = {UPWORK_USER}, keyGenerator = "longboardUpworkCacheKeyGen")
     public Optional<User> user(final Token token, final String ref) {
         // Initialize the user function
         final Users upworkUsersFn = new Users(getClientProvider().getClient(token));
@@ -177,7 +177,7 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @return The user requested, if found
      */
-    @Cacheable(cacheNames = {UPWORK_PROFILE})
+    @Cacheable(cacheNames = {UPWORK_PROFILE}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<User.Profile> profile(final Token token, final String... profileKey) {
         // Filter the list
         final String resolvedProfileKey = Stream.of(profileKey)
@@ -205,7 +205,7 @@ public class UpworkSvc {
      * @param ref   The team reference to be used, if any.
      * @return The list of users on the specific team
      */
-    @Cacheable(cacheNames = {UPWORK_USER_BY_TEAM})
+    @Cacheable(cacheNames = {UPWORK_USER_BY_TEAM}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<User> usersInTeam(final Token token, final String ref) {
         try {
             final Teams teams = new Teams(getClientProvider().getClient(token));
@@ -227,7 +227,7 @@ public class UpworkSvc {
      * @param ref   The company reference to filter for
      * @return The list of companies or specific company
      */
-    @Cacheable(cacheNames = {UPWORK_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_COMPANY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<Company> companies(final Token token, final String ref) {
         // Initialize the Upwork wrapper
         final Companies companies = new Companies(getClientProvider().getClient(token));
@@ -266,7 +266,7 @@ public class UpworkSvc {
      * @param token The access token to be used
      * @return The list of all teams or the specific team
      */
-    @Cacheable(cacheNames = {UPWORK_TEAMS})
+    @Cacheable(cacheNames = {UPWORK_TEAMS}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<Team> teams(final Token token) {
         try {
             final Teams teams = new Teams(getClientProvider().getClient(token));
@@ -281,7 +281,7 @@ public class UpworkSvc {
         }
     }
 
-    @Cacheable(cacheNames = {UPWORK_COMPANY_TEAMS})
+    @Cacheable(cacheNames = {UPWORK_COMPANY_TEAMS}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<Team> companyTeams(final Token token, final String companyRef) {
         // If a valid reference is not found
         final String resolvedEntityRef = ValidationUtil.requires(companyRef,
@@ -299,7 +299,7 @@ public class UpworkSvc {
         }
     }
 
-    @Cacheable(cacheNames = {UPWORK_COMPANY_WORKDIARY})
+    @Cacheable(cacheNames = {UPWORK_COMPANY_WORKDIARY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<DiaryRecord> companyWorkdiary(final Token token,
                                               final LocalDate date,
                                               final String teamOrCompanyID) {
@@ -332,7 +332,7 @@ public class UpworkSvc {
      * @param userRef The reference for the freelancer
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_USER})
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_USER}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> earningsForUser(final Token token,
                                                final LocalDate from,
                                                final LocalDate to,
@@ -370,7 +370,7 @@ public class UpworkSvc {
      * @param userRef The reference for the freelancer
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_BILLING_USER})
+    @Cacheable(cacheNames = {UPWORK_BILLING_USER}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> billingsForUser(final Token token,
                                                final LocalDate from,
                                                final LocalDate to,
@@ -410,7 +410,7 @@ public class UpworkSvc {
      *                   Use Teams & Companies resource to get it.
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_BILLINGS_FREELANCER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_FREELANCER_COMPANY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> billingsForFreelancerCompany(final Token token,
                                                             final LocalDate from,
                                                             final LocalDate to,
@@ -452,7 +452,7 @@ public class UpworkSvc {
      * @param ref   The reference of the team
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM})
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_FREELANCER_TEAM}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> earningsForFreelancerTeam(final Token token,
                                                          final LocalDate from,
                                                          final LocalDate to,
@@ -488,7 +488,7 @@ public class UpworkSvc {
      *                      Use Companies & Teams resource to get it
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM})
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_TEAM}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> earningsForBuyersTeam(final Token token,
                                                      final LocalDate from,
                                                      final LocalDate to,
@@ -528,7 +528,7 @@ public class UpworkSvc {
      *                      Use Companies & Teams resource to get it
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_TEAM})
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_TEAM}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> billingsForBuyersTeam(final Token token,
                                                      final LocalDate from,
                                                      final LocalDate to,
@@ -562,7 +562,7 @@ public class UpworkSvc {
      * @param companyRef The reference of the company to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_EARNINGS_BUYER_COMPANY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> earningsForBuyersCompany(final Token token,
                                                         final LocalDate from,
                                                         final LocalDate to,
@@ -597,7 +597,7 @@ public class UpworkSvc {
      *                        The authenticated user must be the owner of the company.
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_BILLINGS_BUYER_COMPANY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> billingsForBuyersCompany(final Token token,
                                                         final LocalDate from,
                                                         final LocalDate to,
@@ -631,7 +631,7 @@ public class UpworkSvc {
      * @param to    The end date to stop querying at
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_TIME_USER})
+    @Cacheable(cacheNames = {UPWORK_TIME_USER}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<TimeRecord> timeByUser(final Token token,
                                        final LocalDate from,
                                        final LocalDate to
@@ -668,7 +668,7 @@ public class UpworkSvc {
      * @param companyId The reference of the company to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_TIME_COMPANY})
+    @Cacheable(cacheNames = {UPWORK_TIME_COMPANY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<TimeRecord> timeByCompany(final Token token,
                                           final LocalDate from,
                                           final LocalDate to,
@@ -705,7 +705,7 @@ public class UpworkSvc {
      * @param agencyId  The reference of the agency to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_TIME_AGENCY})
+    @Cacheable(cacheNames = {UPWORK_TIME_AGENCY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<TimeRecord> timeByAgency(final Token token,
                                          final LocalDate from,
                                          final LocalDate to,
@@ -747,7 +747,7 @@ public class UpworkSvc {
      * @param teamId    The reference of the team to be queried
      * @return The list of earning records found
      */
-    @Cacheable(cacheNames = {UPWORK_TIME_TEAM})
+    @Cacheable(cacheNames = {UPWORK_TIME_TEAM}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<TimeRecord> timeByTeam(final Token token,
                                        final LocalDate from,
                                        final LocalDate to,
@@ -786,7 +786,7 @@ public class UpworkSvc {
      *                            You need to contact Support Team in order to receive it - it remains unchangeable
      * @return The list of account records found
      */
-    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_ENTITY})
+    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_ENTITY}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> accountsForEntity(final Token token,
                                                  final LocalDate from,
                                                  final LocalDate to,
@@ -827,7 +827,7 @@ public class UpworkSvc {
      * @param ref   The reference of the user to be queried. Assumes the current user if null.
      * @return The list of account records found
      */
-    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_USER})
+    @Cacheable(cacheNames = {UPWORK_ACCOUNTING_USER}, keyGenerator = "longboardUpworkCacheKeyGen")
     public List<FinanceRecord> accountsForUser(final Token token,
                                                final LocalDate from,
                                                final LocalDate to,
@@ -858,7 +858,7 @@ public class UpworkSvc {
      * @param to    The end date to stop querying at
      * @return The list of account records found
      */
-    @Cacheable(cacheNames = {UPWORK_ENGAGEMENTS})
+    @Cacheable(cacheNames = {UPWORK_ENGAGEMENTS}, keyGenerator = "longboardUpworkCacheKeyGen")
     public DataPage<EngagementRecord> engagements(final Token token,
                                                   final LocalDate from,
                                                   final LocalDate to,
@@ -1056,8 +1056,7 @@ public class UpworkSvc {
                     obj.remove(key);
                     removed.add(key);
                 }
-            } catch (JSONException e) {
-            }
+            } catch (JSONException ignored) { }
         });
         return removed;
     }

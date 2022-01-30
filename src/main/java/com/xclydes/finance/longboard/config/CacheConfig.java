@@ -73,6 +73,7 @@ public class CacheConfig extends CachingConfigurerSupport {
         String WAVE_BUSINESS = "wave.business";
         String WAVE_INVOICE = "wave.invoice";
         String WAVE_INVOICES = "wave.invoices";
+        String WAVE_INVOICES_PAGE = "wave.invoices_page";
         String WAVE_ACCOUNT = "wave.account";
         String WAVE_ACCOUNTS = "wave.accounts";
         String WAVE_CUSTOMER = "wave.customer";

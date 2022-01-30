@@ -40,8 +40,6 @@ type WaveAccountSubtype {
 type WaveAccountType {
     "Account type name."
     name: String!
-    "Normal balance type of the account type"
-    normalBalanceType: String!
     "Account type value."
     value: String!
 }
@@ -218,6 +216,16 @@ type WaveInvoice {
     viewUrl: String!
 }
 
+type WaveAccountPage {
+    pagination: PageInfo!
+    page: [WaveAccount]
+}
+
+type WaveProductPage {
+    pagination: PageInfo!
+    page: [WaveProduct]
+}
+
 type WaveCustomerPage {
     pagination: PageInfo!
     page: [WaveCustomer]
@@ -239,7 +247,37 @@ input WaveCustomerInput {
     parent_team__name: String
 }
 
+input WaveInvoiceLineItem {
+    productID: String!
+    description: String!
+    quantity: Float!
+    unitPrice: Float!
+}
 
 input WaveInvoiceInput {
-    id: ID!
+    reference: ID!
+    customerID: String!
+    title: String!
+    memo: String
+    datePosted: Date!
+    dateDue: Date!
+    lineItems: [WaveInvoiceLineItem!]!
+}
+
+enum InvoicePaymentMethod {
+    bank_transfer,
+    cash,
+    cheque,
+    credit_card,
+    paypal,
+    other
+}
+
+input WaveInvoicePaymentInput {
+    invoiceID: String!
+    accountClassicID: String!
+    amount: Float!
+    date: Date!
+    method: InvoicePaymentMethod!
+    memo: String
 }

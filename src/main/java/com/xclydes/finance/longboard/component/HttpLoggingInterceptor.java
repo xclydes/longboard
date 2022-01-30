@@ -3,7 +3,10 @@ package com.xclydes.finance.longboard.component;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import okio.Buffer;
+import org.springframework.util.StreamUtils;
+import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
@@ -54,7 +57,6 @@ public class HttpLoggingInterceptor implements Interceptor {
                 log.trace("{}\r\n===", logMsg);
             }
         }
-
         return response;
     }
 
@@ -104,21 +106,22 @@ public class HttpLoggingInterceptor implements Interceptor {
         if(logHeaders) {
             msg.append("\r\n").append(asString(response.headers()));
         }
-        // Generate the response body
-        String bodyStr = null;
+        // Get the bytes to a Byte array input stream
+        final byte[] responseBytes = StreamUtils.copyToByteArray(responseBody.byteStream());
+        // Assume nothing
+        String bodyStr;
         try {
             // Decode the existing body str
-            final InputStream gzipInStream = new GZIPInputStream(responseBody.byteStream());
+            final InputStream gzipInStream = new GZIPInputStream(new ByteArrayInputStream(responseBytes));
             // Use this instead
             bodyStr = new String(gzipInStream.readAllBytes());
-        }catch (Throwable ignored) {
-            log.error(ignored.getMessage());
-            try {
-                bodyStr = responseBody.string();
-            } catch (IOException ignored1) {  }
+        }catch (Throwable zipExc) {
+            log.trace(zipExc.getMessage());
+            // Use the original response
+            bodyStr = new String(responseBytes);
         }
         // If theres content
-        if(bodyStr != null && !bodyStr.isEmpty()) {
+        if(StringUtils.hasText(bodyStr)) {
             msg.append("\r\n").append(bodyStr);
         }
         // Log the response

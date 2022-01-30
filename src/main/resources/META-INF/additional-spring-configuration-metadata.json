@@ -119,6 +119,11 @@
       "name": "longboard.url",
       "type": "java.lang.String",
       "description": "The root/base URL for the API."
+    },
+    {
+      "name": "longboard.wave.client.headers",
+      "type": "java.lang.String",
+      "description": "The set of headers to be added to the Wave REST client by default."
     }
   ]
 }

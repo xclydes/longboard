@@ -1,5 +1,12 @@
 package com.xclydes.finance.longboard.upwork.models;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class FinanceRecord {
     /**
      * The reference of the accounting transaction.

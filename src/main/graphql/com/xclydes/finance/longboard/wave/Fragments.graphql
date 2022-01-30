@@ -89,17 +89,6 @@ fragment InvoiceFragment on Invoice {
                 value
             }
             rate
-            salesTax {
-                abbreviation
-                description
-                id
-                isCompound
-                name
-                rates {
-                    effective
-                    rate
-                }
-            }
         }
         total {
             currency {
@@ -130,12 +119,6 @@ fragment ProductFragment on Product {
     expenseAccount {
         id
     }
-    defaultSalesTaxes {
-        id
-        name
-        abbreviation
-        description
-    }
 }
 fragment CustomerFragment on Customer {
     id
@@ -151,6 +134,10 @@ fragment AccountFragment on Account {
     classicId
     name
     description
+    business {
+        id
+        name
+    }
     type {
         name
         value
@@ -158,14 +145,23 @@ fragment AccountFragment on Account {
     subtype {
         name
         value
+        type {
+            name
+            value
+        }
     }
     currency {
         code
         name
         symbol
+        exponent
+        plural
     }
     balance
     balanceInBusinessCurrency
+    isArchived
+    normalBalanceType
+    sequence
 }
 fragment BusinessFragment on Business {
     id

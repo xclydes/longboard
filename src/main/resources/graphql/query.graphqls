@@ -37,7 +37,11 @@ type Query {
     waveUser: WaveUser
     waveBusiness(id: ID!): WaveBusiness
     waveBusinesses(page: Int, pageSize: Int): WaveBusinessPage
-    waveCustomer(id: ID!): WaveCustomer
-    waveCustomers(page: Int, pageSize: Int): WaveCustomerPage
+    waveAccount(businessId: String!, id: ID!): WaveBusiness
+    waveAccounts(businessId: String!, page: Int, pageSize: Int, types: [String!], subTypes: [String!]): WaveAccountPage
+    waveCustomer(businessId: String!, id: ID!): WaveCustomer
+    waveCustomers(businessId: String!, page: Int, pageSize: Int): WaveCustomerPage
+    waveProduct(businessId: String!, id: ID!): WaveProduct
+    waveProducts(businessId: String!, page: Int, pageSize: Int): WaveProductPage
     waveInvoices(businessId: String!, ref: String, from: Date!, to: Date = "", page: Int, pageSize: Int): WaveInvoicePage
 }

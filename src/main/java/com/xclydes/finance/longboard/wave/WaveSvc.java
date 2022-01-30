@@ -15,13 +15,10 @@ import com.xclydes.finance.longboard.util.ArrayUtil;
 import com.xclydes.finance.longboard.util.DatesUtil;
 import com.xclydes.finance.longboard.util.GraphQLUtil;
 import com.xclydes.finance.longboard.util.JsonUtil;
-import com.xclydes.finance.longboard.wave.fragment.BusinessFragment;
-import com.xclydes.finance.longboard.wave.fragment.CustomerFragment;
-import com.xclydes.finance.longboard.wave.fragment.InvoiceFragment;
-import com.xclydes.finance.longboard.wave.type.CustomerCreateInput;
-import com.xclydes.finance.longboard.wave.type.CustomerPatchInput;
-import com.xclydes.finance.longboard.wave.type.CustomerSort;
-import com.xclydes.finance.longboard.wave.type.InvoiceCreateInput;
+import com.xclydes.finance.longboard.wave.fragment.*;
+import com.xclydes.finance.longboard.wave.models.InvoiceInput;
+import com.xclydes.finance.longboard.wave.models.InvoicePayment;
+import com.xclydes.finance.longboard.wave.type.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -43,12 +40,15 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static com.xclydes.finance.longboard.config.CacheConfig.CacheKeys.*;
 import static com.xclydes.finance.longboard.util.GraphQLUtil.*;
@@ -240,13 +240,14 @@ public class WaveSvc {
      * @return The user details found, if any.
      */
     @Cacheable(cacheNames = {WAVE_USER}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<Optional<GetUserQuery.User>> user(final Token token) {
+    public Mono<GetUserQuery.User> getUser(final Token token) {
         return processQuery(provideGraphQLClient(token), new GetUserQuery(), (dataResponse) -> {
             // Throw the errors if any
             GraphQLUtil.throwErrors(dataResponse);
             // Otherwise, process the response
             return Optional.ofNullable(dataResponse.getData())
-                    .map(GetUserQuery.Data::user);
+                    .map(GetUserQuery.Data::user)
+                    .orElse(null);
         });
     }
 
@@ -258,7 +259,7 @@ public class WaveSvc {
      * @return The set matching the configuration specified
      */
     @Cacheable(cacheNames = {WAVE_BUSINESSES}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<DataPage<BusinessFragment>> businesses(final Token token, final Integer page, final Integer pageSize) {
+    public Mono<DataPage<BusinessFragment>> getBusinessesPage(final Token token, final Integer page, final Integer pageSize) {
         return processQuery(
                 provideGraphQLClient(token),
                 BusinessListQuery.builder().page(page).pageSize(pageSize).build(),
@@ -286,7 +287,7 @@ public class WaveSvc {
     }
 
     @Cacheable(cacheNames = {WAVE_BUSINESS}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<Optional<BusinessFragment>> business(final Token token, final String businessID) {
+    public Mono<BusinessFragment> getBusiness(final Token token, final String businessID) {
         return processQuery(provideGraphQLClient(token), new GetBusinessQuery(businessID), (dataResponse) -> {
             // Throw the errors if any
             GraphQLUtil.throwErrors(dataResponse);
@@ -294,62 +295,15 @@ public class WaveSvc {
             return Optional.ofNullable(dataResponse.getData())
                     .map(GetBusinessQuery.Data::business)
                     .map(GetBusinessQuery.Business::fragments)
-                    .map(GetBusinessQuery.Business.Fragments::businessFragment);
+                    .map(GetBusinessQuery.Business.Fragments::businessFragment)
+                    .orElse(null);
         });
     }
 
-    @Cacheable(cacheNames = {WAVE_INVOICES}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<DataPage<InvoiceFragment>> invoices(
-            final Token token,
-            final String businessID ,
-            final LocalDate from,
-            final LocalDate to,
-            final Integer page,
-            final Integer pageSize,
-            final String invoiceRef
-            ) {
-        final LocalDate resolvedFrom = from == null ? LocalDate.EPOCH : from;
-        final LocalDate resolvedTo = to == null ? LocalDate.now() : to;
-        final int resolvedPage = page == null ? Integer.valueOf(1) : page;
-        final int resolvedPageSize = pageSize == null ? Integer.valueOf(99) : pageSize;
-        return processQuery(
-                provideGraphQLClient(token),
-                new GetBusinessInvoicesQuery(businessID,
-                    Input.fromNullable(invoiceRef),
-                    Input.fromNullable(inputDateFormat.format(resolvedFrom)),
-                    Input.fromNullable(inputDateFormat.format(resolvedTo)),
-                    Input.fromNullable(resolvedPage),
-                    Input.fromNullable(resolvedPageSize)
-                ),
-                (dataResponse) -> {
-                    // Throw the errors if any
-                    GraphQLUtil.throwErrors(dataResponse);
-                    // Otherwise, process the response
-                    final List<InvoiceFragment> businessFragments = Optional
-                            .ofNullable(dataResponse.getData())
-                            .map(GetBusinessInvoicesQuery.Data::business)
-                            .map(GetBusinessInvoicesQuery.Business::invoices)
-                            .map(GetBusinessInvoicesQuery.Invoices::edges)
-                            .map(edges -> unwrapNestedElement(edges, GetBusinessInvoicesQuery.Edge::node))
-                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessInvoicesQuery.Node::fragments))
-                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessInvoicesQuery.Node.Fragments::invoiceFragment))
-                            .orElse(Collections.emptyList());
-                    final Pagination pagination = Optional
-                            .ofNullable(dataResponse.getData())
-                            .map(GetBusinessInvoicesQuery.Data::business)
-                            .map(GetBusinessInvoicesQuery.Business::invoices)
-                            .map(GetBusinessInvoicesQuery.Invoices::pageInfo)
-                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
-                            .orElse(Pagination.UNKNOWN);
-                    return new DataPage<>(pagination, businessFragments);
-                }
-        );
-    }
-
     @Cacheable(cacheNames = {WAVE_INVOICE}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<Optional<InvoiceFragment>> invoice(final Token token,
-                                                  final String businessID,
-                                                  final String invoiceID) {
+    public Mono<InvoiceFragment> getInvoice(final Token token,
+                                            final String businessID,
+                                            final String invoiceID) {
         return processQuery(
                 provideGraphQLClient(token),
                 new GetBusinessInvoiceQuery(businessID, invoiceID),
@@ -362,51 +316,77 @@ public class WaveSvc {
                             .map(GetBusinessInvoiceQuery.Data::business)
                             .map(GetBusinessInvoiceQuery.Business::invoice)
                             .map(GetBusinessInvoiceQuery.Invoice::fragments)
-                            .map(GetBusinessInvoiceQuery.Invoice.Fragments::invoiceFragment);
+                            .map(GetBusinessInvoiceQuery.Invoice.Fragments::invoiceFragment)
+                            .orElse(null);
                 }
         );
     }
 
     @CacheEvict(cacheNames = {WAVE_CUSTOMERS}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Flux<CustomerFragment> getBusinessCustomers(final Token token,
-                                                            final String businessID) {
-        return Flux.create((sink) -> {
-            List<CustomerSort> sort = Collections.singletonList(CustomerSort.NAME_ASC);
-            final AtomicReference<Integer>  currentPage = new AtomicReference<>(1);
-            final AtomicReference<Integer> maxPage = new AtomicReference<>(0);
-            do {
-                try {
-                    final List<GetBusinessCustomersQuery.Edge> edges = processQuery(
-                        getClientProviderGQL().getClient(token),
-                        GetBusinessCustomersQuery.builder().businessId(businessID)
-                                .cusPage(currentPage.get())
-                                .cusPageSize(99)
-                                .cusSort(sort)
-                                .build(),
-                        Response::getData
-                    )
+    public Mono<DataPage<CustomerFragment>> getCustomersPage(final Token token,
+                                                  final String businessID,
+                                                   final Integer page, final Integer pageSize) {
+        final List<CustomerSort> sort = Collections.singletonList(CustomerSort.NAME_ASC);
+        return processQuery(
+                provideGraphQLClient(token),
+                GetBusinessCustomersQuery.builder().businessId(businessID)
+                        .cusPage(page)
+                        .cusPageSize(pageSize)
+                        .cusSort(sort)
+                        .build(),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    final GetBusinessCustomersQuery.Data data = dataResponse.getData();
+                    final Optional<GetBusinessCustomersQuery.Customers> customersOpt = Optional
+                            .ofNullable(data)
+                            .map(GetBusinessCustomersQuery.Data::business)
+                            .map(GetBusinessCustomersQuery.Business::customers);
+                    // Otherwise, process the response
+                    final List<CustomerFragment> businessFragments = customersOpt
+                            .map(GetBusinessCustomersQuery.Customers::edges)
+                            .map(edges -> unwrapNestedElement(edges, GetBusinessCustomersQuery.Edge::node))
+                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessCustomersQuery.Node::fragments))
+                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessCustomersQuery.Node.Fragments::customerFragment))
+                            .orElse(Collections.emptyList());
+                    final Pagination pagination = customersOpt
+                            .map(GetBusinessCustomersQuery.Customers::pageInfo)
+                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
+                            .orElse(Pagination.UNKNOWN);
+                    return new DataPage<>(pagination, businessFragments);
+                }
+        );
+    }
+
+    @CacheEvict(cacheNames = {WAVE_CUSTOMERS}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Flux<CustomerFragment> getAllCustomers(final Token token,
+                                                  final String businessID) {
+        final List<CustomerSort> sort = Collections.singletonList(CustomerSort.NAME_ASC);
+        return getAll(token, (gQLClient, currentPage, maxPages) -> {
+            final List<GetBusinessCustomersQuery.Edge> edges = processQuery(
+                    getClientProviderGQL().getClient(token),
+                    GetBusinessCustomersQuery.builder().businessId(businessID)
+                            .cusPage(currentPage)
+                            .cusPageSize(99)
+                            .cusSort(sort)
+                            .build(),
+                    Response::getData
+            )
                     .mapNotNull(GetBusinessCustomersQuery.Data::business)
                     .mapNotNull(business -> business.customers)
                     .mapNotNull(customers -> {
                         final GetBusinessCustomersQuery.PageInfo pageInfo = customers.pageInfo();
-                        maxPage.set(Optional.ofNullable(pageInfo.totalPages()).orElse(0));
+                        maxPages.set(Optional.ofNullable(pageInfo.totalPages()).orElse(0));
                         return customers.edges();
                     })
                     .blockOptional()
                     .orElse(Collections.emptyList());
-                    // Take the edges found as a stream
-                    edges.stream()
-                            .map(GetBusinessCustomersQuery.Edge::node)
-                            .filter(Objects::nonNull)
-                            .map(node -> node.fragments().customerFragment())
-                            .forEach(sink::next);
-                } catch (Exception e) {
-                    sink.error(e);
-                }
-                currentPage.getAndUpdate(p -> p + 1);
-            } while( currentPage.get() < maxPage.get() );
-            // That's all
-            sink.complete();
+            // Take the edges found as a stream
+            return edges.stream()
+                    .map(GetBusinessCustomersQuery.Edge::node)
+                    .filter(Objects::nonNull)
+                    .map(node -> node.fragments().customerFragment())
+                    .collect(Collectors.toList());
         });
     }
 
@@ -419,7 +399,7 @@ public class WaveSvc {
         return Mono.just(newCustomerFragment)
             .flatMap(customerFragment -> {
                 // Find the entry with the same display ID
-                return getBusinessCustomers(token, businessID)
+                return getAllCustomers(token, businessID)
                 .filter(custFrag -> Objects.equals(custFrag.displayId(), newCustomerFragment.displayId()))
                 .next()
                 .map(Optional::ofNullable)
@@ -529,11 +509,364 @@ public class WaveSvc {
         );
     }
 
-    @CacheEvict(cacheNames = {WAVE_INVOICE, WAVE_INVOICES}, keyGenerator = "longboardWaveCacheKeyGen")
-    public Mono<CreateInvoiceMutation.InvoiceCreate> createInvoice(final InvoiceCreateInput invoice) {
-//        val mutationResult = clientGraphQL.mutate(CreateInvoiceMutation(invoice)).await()
-//        mutationResult.data?.invoiceCreate
-        return Mono.empty();
+    /* Start Invoices */
+    @Cacheable(cacheNames = {WAVE_INVOICES_PAGE}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Mono<DataPage<InvoiceFragment>> getInvoicesPage(
+            final Token token,
+            final String businessID ,
+            final LocalDate from,
+            final LocalDate to,
+            final Integer page,
+            final Integer pageSize,
+            final String invoiceRef
+    ) {
+        final LocalDate resolvedFrom = from == null ? LocalDate.EPOCH : from;
+        final LocalDate resolvedTo = to == null ? LocalDate.now() : to;
+        final int resolvedPage = page == null ? Integer.valueOf(1) : page;
+        final int resolvedPageSize = pageSize == null ? Integer.valueOf(99) : pageSize;
+        return processQuery(
+                provideGraphQLClient(token),
+                new GetBusinessInvoicesQuery(businessID,
+                        Input.fromNullable(invoiceRef),
+                        Input.fromNullable(inputDateFormat.format(resolvedFrom)),
+                        Input.fromNullable(inputDateFormat.format(resolvedTo)),
+                        Input.fromNullable(resolvedPage),
+                        Input.fromNullable(resolvedPageSize)
+                ),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    // Otherwise, process the response
+                    final List<InvoiceFragment> businessFragments = Optional
+                            .ofNullable(dataResponse.getData())
+                            .map(GetBusinessInvoicesQuery.Data::business)
+                            .map(GetBusinessInvoicesQuery.Business::invoices)
+                            .map(GetBusinessInvoicesQuery.Invoices::edges)
+                            .map(edges -> unwrapNestedElement(edges, GetBusinessInvoicesQuery.Edge::node))
+                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessInvoicesQuery.Node::fragments))
+                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessInvoicesQuery.Node.Fragments::invoiceFragment))
+                            .orElse(Collections.emptyList());
+                    final Pagination pagination = Optional
+                            .ofNullable(dataResponse.getData())
+                            .map(GetBusinessInvoicesQuery.Data::business)
+                            .map(GetBusinessInvoicesQuery.Business::invoices)
+                            .map(GetBusinessInvoicesQuery.Invoices::pageInfo)
+                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
+                            .orElse(Pagination.UNKNOWN);
+                    return new DataPage<>(pagination, businessFragments);
+                }
+        );
     }
 
+    @Cacheable(cacheNames = {WAVE_INVOICES}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Flux<InvoiceFragment> getAllInvoices(
+            final Token token,
+            final String businessID,
+            final LocalDate fromIn,
+            final LocalDate toIn,
+            final String invoiceRef
+    ) {
+        final LocalDate from = Optional.ofNullable(fromIn).orElse(LocalDate.EPOCH);
+        final LocalDate to = Optional.ofNullable(toIn).orElse(LocalDate.now());
+        return getAll(token, (gQLClient, currentPage, maxPages) -> {
+            final List<GetBusinessInvoicesQuery.Edge> edges = processQuery(
+                    gQLClient,
+                    GetBusinessInvoicesQuery.builder()
+                            .businessId(businessID)
+                            .filterFrom(inputDateFormat.format(from))
+                            .filterTo(inputDateFormat.format(to))
+                            .filterNum(invoiceRef)
+                            .build(),
+                    Response::getData
+            )
+                    .mapNotNull(GetBusinessInvoicesQuery.Data::business)
+                    .mapNotNull(business -> business.invoices)
+                    .mapNotNull(products -> {
+                        final GetBusinessInvoicesQuery.PageInfo pageInfo = products.pageInfo();
+                        maxPages.set(Optional.ofNullable(pageInfo.totalPages()).orElse(0));
+                        return products.edges();
+                    })
+                    .blockOptional().orElse(Collections.emptyList());
+            // Take the edges found as a stream
+            return edges.stream()
+                    .map(GetBusinessInvoicesQuery.Edge::node)
+                    .map(node -> node.fragments().invoiceFragment())
+                    .collect(Collectors.toList());
+        });
+    }
+
+    public Mono<ObjectNode> payInvoice(
+            final Token token,
+            final InvoicePayment payment
+            ) {
+        // Decode the invoice ID
+        final Map<String, String> decodedInvoiceID = decodeId(payment.getInvoiceID());
+        // Create the account reference
+        final ObjectNode acctRef = JsonUtil.newObject().put("id", payment.getAccountClassicID());
+        final String url = String.format(
+            "/businesses/%s/invoices/%s/payments/",
+                decodedInvoiceID.get(ID_BUSINESS),
+                decodedInvoiceID.get(ID_INVOICE)
+        );
+        final WebClient restClient = getClientProviderRest().getClient(token);
+        final ObjectNode jsonBody = JsonUtil.newObject()
+                .put("amount", payment.getAmount())
+                .put("exchange_rate", 1)
+                .put("memo", payment.getMemo())
+                .putPOJO("payment_account", acctRef)
+                .put("payment_date", inputDateFormat.format(payment.getDate()))
+                .put("payment_method", payment.getMethod().toString());
+        // Make the request
+        final WebClient.ResponseSpec request = restClient.post()
+                .uri(url)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(jsonBody)
+                .retrieve();
+        return request
+                .toEntity(ObjectNode.class)
+                .mapNotNull(entity -> {
+                    ObjectNode body = null;
+                    if(entity.getStatusCode().is2xxSuccessful()) {
+                        body = entity.getBody();
+                    }
+                    return body;
+                });
+    }
+    /* End Invoices */
+
+    @CacheEvict(cacheNames = {WAVE_INVOICE, WAVE_INVOICES, WAVE_INVOICES_PAGE}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Mono<InvoiceFragment> saveInvoice(
+            final Token token,
+            final InvoiceInput transactionWrapper,
+            final String businessID
+        ) {
+        // Convert the line items
+        final List<InvoiceCreateItemInput> items = transactionWrapper.lineItems.stream()
+                .map(item ->
+                        InvoiceCreateItemInput.builder()
+                                .productId(item.getProductID())
+                                .description(item.getDescription())
+                                // Force 5 decimals to control calculations
+                                .quantity(BigDecimal.valueOf(item.getQuantity()).setScale(5, RoundingMode.HALF_UP).toString())
+                                .unitPrice(BigDecimal.valueOf(item.getUnitPrice()).setScale(5, RoundingMode.HALF_UP).toString())
+                                .build()
+                )
+                .collect(Collectors.toList());
+        // Create the input
+        final InvoiceCreateInput invoiceInput = InvoiceCreateInput.builder()
+                .businessId(businessID)
+                .customerId(transactionWrapper.getCustomerID())
+                .status(InvoiceCreateStatus.SAVED)
+                // TODO Use one from the input
+                .currency(CurrencyCode.USD)
+                .invoiceDate(inputDateFormat.format(transactionWrapper.getDatePosted()))
+                .title(transactionWrapper.getTitle())
+                .invoiceNumber(transactionWrapper.getReference())
+                .dueDate(inputDateFormat.format(transactionWrapper.getDateDue()))
+                .items(items)
+                .memo(transactionWrapper.getMemo())
+                .build();
+        return processMutation(
+            getClientProviderGQL().getClient(token),
+            CreateInvoiceMutation.builder().input(invoiceInput).build(),
+            dataResponse -> {
+                // Throw the errors if any
+                GraphQLUtil.throwErrors(dataResponse);
+                // Otherwise, process the response
+                return Optional
+                        .ofNullable(dataResponse.getData())
+                        .map(CreateInvoiceMutation.Data::invoiceCreate)
+                        .orElse(null);
+            }
+        )
+        .flatMap(invoiceCreate -> {
+            final Mono<InvoiceFragment> out;
+            if(!invoiceCreate.didSucceed) {
+                out = Mono.error(Objects.requireNonNull(invoiceCreate.inputErrors())
+                    .stream()
+                    .findFirst()
+                    .map(error -> new APIException(error.message(), "Rejected", error.code))
+                    .orElse(new APIException("Invoice creation failed", "Unknown", "400")));
+            } else {
+                // Lookup the invoice
+                out = getInvoice(token, businessID, invoiceCreate.invoice.fragments().invoiceFragment().id());
+            }
+            return out;
+        });
+
+    }
+
+    /* Start Products */
+    @Cacheable(cacheNames = {WAVE_PRODUCT}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Mono<ProductFragment> getProduct(
+        final Token token,
+        final String businessID,
+        final String productID
+    ){
+        return processQuery(
+            getClientProviderGQL().getClient(token),
+            GetBusinessProductQuery.builder()
+                .businessId(businessID)
+                .prodId(productID)
+                .build(),
+            dataResponse -> {
+                // Throw the errors if any
+                GraphQLUtil.throwErrors(dataResponse);
+                // Otherwise, process the response
+                return Optional
+                    .ofNullable(dataResponse.getData())
+                    .map(GetBusinessProductQuery.Data::business)
+                    .map(GetBusinessProductQuery.Business::product)
+                    .map(GetBusinessProductQuery.Product::fragments)
+                    .map(GetBusinessProductQuery.Product.Fragments::productFragment)
+                    .orElse(null);
+            }
+        );
+    }
+
+    @CacheEvict(cacheNames = {WAVE_CUSTOMERS}, keyGenerator = "longboardWaveCacheKeyGen")
+    public Mono<DataPage<ProductFragment>> getProductsPage(final Token token,
+                                                             final String businessID,
+                                                             final Integer page,
+                                                           final Integer pageSize) {
+        return processQuery(
+                provideGraphQLClient(token),
+                GetBusinessProductsQuery.builder()
+                        .businessId(businessID)
+                        .prodPage(page)
+                        .prodPageSize(pageSize)
+                        .build(),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    final GetBusinessProductsQuery.Data data = dataResponse.getData();
+                    final Optional<GetBusinessProductsQuery.Products> customersOpt = Optional
+                            .ofNullable(data)
+                            .map(GetBusinessProductsQuery.Data::business)
+                            .map(GetBusinessProductsQuery.Business::products);
+                    // Otherwise, process the response
+                    final List<ProductFragment> businessFragments = customersOpt
+                            .map(GetBusinessProductsQuery.Products::edges)
+                            .map(edges -> unwrapNestedElement(edges, GetBusinessProductsQuery.Edge::node))
+                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessProductsQuery.Node::fragments))
+                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessProductsQuery.Node.Fragments::productFragment))
+                            .orElse(Collections.emptyList());
+                    final Pagination pagination = customersOpt
+                            .map(GetBusinessProductsQuery.Products::pageInfo)
+                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
+                            .orElse(Pagination.UNKNOWN);
+                    return new DataPage<>(pagination, businessFragments);
+                }
+        );
+    }
+
+    public Flux<ProductFragment> getAllProducts(
+            final Token token,
+            final String businessID
+    ){
+        return getAll(token, (gQLClient, currentPage, maxPages) -> {
+            final List<GetBusinessProductsQuery.Edge> edges = processQuery(
+                    gQLClient,
+                    GetBusinessProductsQuery.builder()
+                            .businessId(businessID)
+                            .prodPage(currentPage)
+                            .prodPageSize(99)
+                            .build(),
+                    Response::getData
+            )
+            .mapNotNull(GetBusinessProductsQuery.Data::business)
+            .mapNotNull(business -> business.products)
+            .mapNotNull(products -> {
+                final GetBusinessProductsQuery.PageInfo pageInfo = products.pageInfo();
+                maxPages.set(Optional.ofNullable(pageInfo.totalPages()).orElse(0));
+                return products.edges();
+            })
+            .blockOptional().orElse(Collections.emptyList());
+            // Take the edges found as a stream
+            return edges.stream()
+                .map(GetBusinessProductsQuery.Edge::node)
+                .map(node -> node.fragments().productFragment())
+                .collect(Collectors.toList());
+        });
+    }
+    /* End Products */
+
+    /* Start Accounts */
+    @Cacheable(cacheNames = {WAVE_ACCOUNTS})
+    public Mono<DataPage<AccountFragment>> getAccountsPage(
+            final Token token,
+            final String businessID,
+            final Integer page,
+            final Integer pageSize,
+            final List<AccountTypeValue> types,
+            final List<AccountSubtypeValue> subtypes
+    ) {
+        final List<AccountTypeValue> resolvedTypes = Optional.ofNullable(types).orElse(Collections.emptyList());
+        final List<AccountSubtypeValue> resolvedSubTypes = Optional.ofNullable(subtypes).orElse(Collections.emptyList());
+        return processQuery(
+                provideGraphQLClient(token),
+                GetBusinessAccountsQuery.builder()
+                    .businessId(businessID)
+                    .accPage(page)
+                    .accPageSize(pageSize)
+                    .types(resolvedTypes)
+                    .subTypes(resolvedSubTypes)
+                    .build(),
+                (dataResponse) -> {
+                    // Throw the errors if any
+                    GraphQLUtil.throwErrors(dataResponse);
+                    final GetBusinessAccountsQuery.Data data = dataResponse.getData();
+                    final Optional<GetBusinessAccountsQuery.Accounts> customersOpt = Optional
+                            .ofNullable(data)
+                            .map(GetBusinessAccountsQuery.Data::business)
+                            .map(GetBusinessAccountsQuery.Business::accounts);
+                    // Otherwise, process the response
+                    final List<AccountFragment> businessFragments = customersOpt
+                            .map(GetBusinessAccountsQuery.Accounts::edges)
+                            .map(edges -> unwrapNestedElement(edges, GetBusinessAccountsQuery.Edge::node))
+                            .map(nodes -> unwrapNestedElement(nodes, GetBusinessAccountsQuery.Node::fragments))
+                            .map(fragments -> unwrapNestedElement(fragments, GetBusinessAccountsQuery.Node.Fragments::accountFragment))
+                            .orElse(Collections.emptyList());
+                    final Pagination pagination = customersOpt
+                            .map(GetBusinessAccountsQuery.Accounts::pageInfo)
+                            .map(pageInfo -> new Pagination(pageSize, pageInfo.currentPage(), pageInfo.totalPages(), pageInfo.totalCount()))
+                            .orElse(Pagination.UNKNOWN);
+                    return new DataPage<>(pagination, businessFragments);
+                }
+        );
+    }
+    /* End Accounts */
+
+
+    /* Start Utility Functions */
+    public <I> Flux<I> getAll(final Token token,
+                              final DataFetcher<I> fetcher) {
+        return Flux.create((sink) -> {
+            final AtomicReference<Integer> currentPage = new AtomicReference<>(1);
+            final AtomicReference<Integer> maxPage = new AtomicReference<>(0);
+            final ApolloClient gQLClient = getClientProviderGQL().getClient(token);
+            do {
+                try {
+                    fetcher.fetch(gQLClient, currentPage.get(), maxPage)
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .forEach(sink::next);
+                } catch (Exception e) {
+                    sink.error(e);
+                }
+                currentPage.getAndUpdate(p -> p + 1);
+            } while( currentPage.get() < maxPage.get() );
+            // That's all
+            sink.complete();
+        });
+    }
+    /* End Utility functions */
+
+    @FunctionalInterface
+    interface DataFetcher<I> {
+        Collection<I> fetch(final ApolloClient gQLClient,
+                            final int currentPage,
+                            final AtomicReference<Integer> maxPages);
+    }
 }
